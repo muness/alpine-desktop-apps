@@ -425,14 +425,21 @@ setup. These Android APKs are unrelated to Alpine packages.
 
 After fixing the config permissions, we had to restart Android before the
 Brydge could type. Restart with `waydroid session stop`, then
-`waydroid show-full-ui`. To suppress the Android keyboard with hardware input,
-run as root:
+`waydroid show-full-ui`.
+
+To hide Android's screen keyboard, open **Android Settings → System →
+Languages & input → Physical keyboard** and turn **Use on-screen keyboard**
+off. Turn it back on when you want the screen keyboard. This is an Android
+setting, separate from GNOME's screen keyboard.
+
+For scripts, the equivalent command is (run as root):
 
 ```sh
 waydroid shell -- settings put secure show_ime_with_hard_keyboard 0
 ```
 
-Use `1` to restore it. Waydroid exposes a persistent virtual hardware keyboard,
+Use `1` to turn it back on. The [Android Settings toggle](https://github.com/LineageOS/android_packages_apps_Settings/blob/lineage-20.0/src/com/android/settings/inputmethod/PhysicalKeyboardFragment.java)
+writes this same setting. Waydroid exposes a persistent virtual hardware keyboard,
 so Bluetooth disconnection may not automatically bring the screen keyboard back.
 
 ## Remaining issues
