@@ -22,7 +22,7 @@ Alpine supplies the daemon; this repository packages the GNOME extension.
 Build it with `./scripts/build-tailscale-qs-apk.sh`. It does not need the large
 glibc runtime or the desktop-apps APK.
 
-An experimental [Waydroid + DC-1 kernel recipe](docs/waydroid.md) pairs Android
+An experimental [Waydroid + DC-1 kernel recipe](experiments/waydroid/README.md) pairs Android
 with the kernel configuration it required on the trial tablet. It includes
 tested recovery procedures, app-store instructions and the interpreter-mode
 performance caveat. This kernel is hardware-specific and remains separate from
