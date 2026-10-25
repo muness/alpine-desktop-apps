@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+"""Restore the preserved DC-1 kernel after the accepted Waydroid test."""
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+BASE = Path('/var/lib/dc1/waydroid-test')
+PENDING = Path('/var/lib/dc1/local-kernel/pending.json')
+
+def require(condition, message):
+    if not condition:
+        raise SystemExit(message)
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+require(os.geteuid() == 0, 'Run through pkexec or sudo.')
+os.umask(0o077)
+require(sys.argv[1:] in ([], ['--check']), 'Usage: dc1-waydroid-rollback [--check]')
+check_only = sys.argv[1:] == ['--check']
+record = BASE / 'accepted-state.json'
+if check_only and not record.exists():
+    record = PENDING
+require(record.exists(), 'No saved Waydroid kernel transaction is available.')
+state = json.loads(record.read_text())
+require(Path('/proc/version').read_text().strip() == state['new_banner'],
+        'Running kernel differs from the saved Waydroid build; refusing stale rollback.')
+spec = importlib.util.spec_from_file_location('dc1_local_kernel', '/var/lib/dc1/local-kernel/confirm.py')
+helper = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(helper)
+selected, slots, _ = helper.slot_status()
+fallback = 'a' if state['target'] == 'b' else 'b'
+require(selected == state['target'] and slots[fallback][2] == 1,
+        'The saved candidate is not selected, or its fallback is not proven.')
+directory = Path(state['directory'])
+require(helper.boot_read(helper.devices()['boot_' + fallback]) ==
+        (directory / ('boot_' + fallback + '.img')).read_bytes(),
+        'Fallback boot image changed; refusing stale rollback.')
+require(digest(directory / 'previous.apk') == state['previous_sha256'],
+        'Original kernel package changed.')
+require(digest(directory / 'previous-modules.apk') == state['previous_modules_sha256'],
+        'Original modules package changed.')
+require((BASE / 'rollback/modules.tar').exists(), 'Original module archive is missing.')
+if check_only:
+    print('Rollback checks passed: original boot image, packages and proven slot match.')
+    raise SystemExit(0)
+require(not PENDING.exists(), 'A kernel test is still pending; use its existing recovery path.')
+run = lambda *args: subprocess.run(args, check=True)
+run('systemctl', 'mask', 'waydroid-container.service')
+run('systemctl', 'stop', 'waydroid-container.service')
+run('systemctl', 'mask', '--runtime', 'dc1-boot-sync.service', 'dc1-update.service')
+run('tar', '-xf', str(BASE / 'rollback/modules.tar'), '-C', '/')
+Path('/var/lib/dc1/no-auto-update').touch()
+helper.save_state(state)
+run('dc1-slotctl', 'prefer', fallback)
+os.sync()
+print('Rebooting to the preserved kernel; its packages will be restored automatically.', flush=True)
+run('systemctl', 'reboot')

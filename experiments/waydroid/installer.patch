@@ -1,0 +1,34 @@
+--- a/scripts/kernel-local-install.py
++++ b/scripts/kernel-local-install.py
+@@ -119,14 +119,13 @@
+         data = header + stream.read(64*1024*1024 - 4096 + 1)
+         require(size <= len(data) <= 64*1024*1024,
+                 'truncated or oversized boot target')
+-    unpack(data)
+     return data
+ 
+ 
+ def slot_status():
+     text = subprocess.check_output(['dc1-slotctl', 'status'], text=True)
+     selected = re.search(r'active=([ab])', text)
+-    slots = re.findall(r'slot ([ab]): pri=(\d+) tries=(\d+) ok=(\d+)', text)
++    slots = re.findall(r'slot ([ab]):\s+pri=(\d+)\s+tries=(\d+)\s+ok=(\d+)', text)
+     require(selected and len(slots) == 2, 'unreadable A/B state')
+     return selected[1], {s: tuple(map(int, (p, t, o))) for s, p, t, o in slots}, text
+ 
+@@ -334,7 +333,14 @@
+     devs = devices()
+     boots = {slot: boot_read(devs['boot_'+slot]) for slot in 'ab'}
+     current = Path('/proc/version').read_text().strip()
+-    matching = [slot for slot, data in boots.items() if banner(unpack(data)[0][unpack(data)[1]:]) == current]
++    matching = []
++    for slot, data in boots.items():
++        try:
++            payload, offset, *_ = unpack(data)
++        except RuntimeError:
++            continue  # A backed-up inactive Android image need not use dtbswap.
++        if banner(payload[offset:]) == current:
++            matching.append(slot)
+     require(len(matching) == 1, 'running build does not uniquely identify a boot slot')
+     active = matching[0]
+     target = 'b' if active == 'a' else 'a'

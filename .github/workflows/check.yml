@@ -13,5 +13,10 @@ jobs:
           for file in packaging/APKBUILD packaging/tailscale-qs/APKBUILD packaging/obsidian/APKBUILD packaging/obsidian/obsidian packaging/build-in-container.sh packaging/desktop-apps-runtime packaging/1password packaging/chatgpt packaging/browseros-neo packaging/portal-xdg-open; do
             sh -n "$file"
           done
+      - name: Check Waydroid experiment
+        run: |
+          sh -n experiments/waydroid/prepare-kernel.sh experiments/waydroid/arm-recovery.sh experiments/waydroid/accept-kernel.sh
+          python3 -m py_compile experiments/waydroid/fetch-images.py experiments/waydroid/dc1-waydroid-rollback
+          python3 -m json.tool experiments/waydroid/images.json > /dev/null
       - name: Check whitespace
         run: git show --format= --check HEAD
