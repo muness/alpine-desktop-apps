@@ -7,7 +7,7 @@ import io
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import zipfile
 
 spec = importlib.util.spec_from_file_location('backend', Path(__file__).with_name('backend.py'))
@@ -31,16 +31,44 @@ class BackendTests(unittest.TestCase):
     def test_checksum_failure_never_installs_download(self):
         with tempfile.TemporaryDirectory() as d:
             pin={'filename':'system.zip','url':'https://example.invalid','size':3,'id':'0'*64,'romtype':'test'}
-            with patch.object(b.urllib.request,'urlopen',return_value=io.BytesIO(b'bad')):
+            (Path(d)/'system.partial').write_bytes(b'bad')
+            process=MagicMock();process.stdout=[];process.wait.return_value=0;process.poll.return_value=0
+            with patch.object(b.subprocess,'Popen',return_value=process):
                 with self.assertRaises(b.SetupError): b.download(pin,Path(d))
             self.assertFalse((Path(d)/'system.zip').exists())
             self.assertFalse((Path(d)/'system.partial').exists())
+
+    def test_failed_transfer_preserves_partial_and_resume_metadata(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);partial=root/'system.partial';partial.write_bytes(b'prefix')
+            control=root/'system.partial.aria2';control.write_bytes(b'pieces')
+            pin={'filename':'system.zip','url':'https://example.invalid','size':20,'id':'0'*64,'romtype':'test'}
+            process=MagicMock();process.stdout=[];process.wait.return_value=1;process.poll.return_value=1
+            with patch.object(b.subprocess,'Popen',return_value=process) as launch:
+                with self.assertRaisesRegex(b.SetupError,'retained'):b.download(pin,root)
+            self.assertEqual(partial.read_bytes(),b'prefix')
+            self.assertEqual(control.read_bytes(),b'pieces')
+            self.assertIn('--continue=true',launch.call_args.args[0])
+            self.assertFalse((root/'system.zip').exists())
+
+    def test_aria_progress_is_numeric_and_sourceforge_uses_download_endpoint(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);(root/'system.partial').write_bytes(b'good')
+            pin={'filename':'system.zip','url':'https://sourceforge.net/projects/waydroid/files/path/system.zip/download','size':4,'id':hashlib.sha256(b'good').hexdigest(),'romtype':'VANILLA'}
+            process=MagicMock();process.stdout=['[#abc123 2B/4B(50%) CN:4 DL:1024B ETA:1s]','secret redirect URL'];process.wait.return_value=0;process.poll.return_value=0
+            with patch.object(b.subprocess,'Popen',return_value=process) as launch,patch.object(b,'emit') as emit:
+                b.download(pin,root)
+            self.assertEqual(launch.call_args.args[0][-1],'https://downloads.sourceforge.net/project/waydroid/path/system.zip')
+            messages='\n'.join(c.args[0] for c in emit.call_args_list)
+            self.assertIn('Downloading VANILLA: 50%',messages)
+            self.assertIn('1 KiB/s',messages)
+            self.assertNotIn('secret',messages)
 
     def test_cached_verified_download_avoids_network(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'system.zip';p.write_bytes(b'good')
             pin={'filename':p.name,'size':4,'id':hashlib.sha256(b'good').hexdigest()}
-            with patch.object(b.urllib.request,'urlopen',side_effect=AssertionError('network')):
+            with patch.object(b.subprocess,'Popen',side_effect=AssertionError('network')):
                 self.assertEqual(b.download(pin,Path(d)),p)
 
     def test_extract_does_not_traverse_or_overwrite(self):

@@ -13,8 +13,9 @@ import pwd
 import shutil
 import subprocess
 import sys
-import time
-import urllib.request
+import re
+import signal
+from urllib.parse import urlsplit
 import zipfile
 
 HERE = Path(__file__).resolve().parent
@@ -87,37 +88,57 @@ def download(pin, directory):
             return target
         raise SetupError('Cached archive failed verification: ' + pin['filename'] + '. Remove that file from the setup cache and retry.')
     partial = target.with_suffix('.partial')
+    url = pin['url']
+    parsed = urlsplit(url)
+    # Use SourceForge's download endpoint, not its browser landing page.
+    match = re.fullmatch(r'/projects/([^/]+)/files/(.+)/download', parsed.path)
+    if parsed.hostname == 'sourceforge.net' and match:
+        url = f'https://downloads.sourceforge.net/project/{match[1]}/{match[2]}'
+    command = ['aria2c', '--no-conf=true', '--continue=true', '--max-connection-per-server=4',
+               '--split=4', '--min-split-size=8M', '--file-allocation=none',
+               '--auto-file-renaming=false', '--allow-overwrite=false',
+               '--max-tries=5', '--retry-wait=2', '--connect-timeout=15', '--timeout=30',
+               '--lowest-speed-limit=100K', '--auto-save-interval=1',
+               '--summary-interval=2', '--enable-color=false', '--human-readable=false',
+               '--console-log-level=warn', '--download-result=hide',
+               '--dir=' + str(directory), '--out=' + partial.name, url]
+    process = None
+    previous_handler = signal.getsignal(signal.SIGTERM)
+    def interrupted(*_):
+        raise SetupError('Download stopped. Partial data is retained; retry to resume.')
     try:
-        request = urllib.request.Request(pin['url'], headers={'User-Agent': 'dc1-waydroid-setup/1'})
-        with urllib.request.urlopen(request, timeout=60) as src, partial.open('wb') as dst:
-            received = 0
-            last_notice = None
-            started = time.monotonic()
-            while chunk := src.read(1024 * 1024):
-                received += len(chunk)
-                if received > pin['size']:
-                    raise SetupError('Download exceeds its pinned size: ' + pin['filename'])
-                dst.write(chunk)
-                now = time.monotonic()
-                if last_notice is None or now - last_notice >= 2 or received == pin['size']:
-                    rate = received / max(now - started, 0.001)
-                    remaining = max(0, pin['size'] - received) / rate
-                    eta = f"{int(remaining // 60)}m {int(remaining % 60)}s left" if received < pin['size'] else 'download complete'
-                    emit(f"Downloading {pin['romtype']}: {received * 100 // pin['size']}% "
-                         f"({received / 1024**2:.1f} / {pin['size'] / 1024**2:.1f} MiB) · "
-                         f"{rate / 1024:.0f} KiB/s · {eta}")
-                    last_notice = now
+        signal.signal(signal.SIGTERM, interrupted)
+        emit('Connecting with aria2; existing partial downloads will resume')
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        for line in process.stdout:
+            # Only expose numeric progress, never raw downloader URLs or errors.
+            match = re.search(r'\[#\w+ (\d+)B?/(\d+)B?\((\d+)%\).*?DL:(\d+)B?(?:.*?ETA:([^\]\s]+))?', line)
+            if match:
+                done, total, percent, rate = map(int, match.group(1, 2, 3, 4))
+                eta = match[5] or 'estimating'
+                emit(f"Downloading {pin['romtype']}: {min(percent, 100)}% "
+                     f"({done / 1024**2:.1f} / {total / 1024**2:.1f} MiB) · "
+                     f"{rate / 1024:.0f} KiB/s · {eta} left")
+        if process.wait():
+            raise SetupError('Download failed after aria2 retries. Partial data is retained; retry to resume.')
         emit('Verifying SHA256: ' + pin['filename'])
         if partial.stat().st_size != pin['size'] or sha(partial) != pin['id']:
+            partial.unlink(missing_ok=True)
+            Path(str(partial) + '.aria2').unlink(missing_ok=True)
             raise SetupError('Download checksum failed: ' + pin['filename'] + '. Retry to download it again.')
         partial.replace(target)
+        Path(str(partial) + '.aria2').unlink(missing_ok=True)
         return target
-    except SetupError:
-        raise
-    except Exception:
-        raise SetupError('Image download failed. Check Internet access and retry; completed archives are retained.') from None
+    except FileNotFoundError:
+        raise SetupError('aria2 or its download file is missing. Reinstall Waydroid Setup and retry.') from None
     finally:
-        partial.unlink(missing_ok=True)
+        if process is not None and process.poll() is None:
+            process.send_signal(signal.SIGINT)
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill(); process.wait()
+        signal.signal(signal.SIGTERM, previous_handler)
 
 def extract_image(archive, name, directory):
     directory.mkdir(parents=True, exist_ok=True)

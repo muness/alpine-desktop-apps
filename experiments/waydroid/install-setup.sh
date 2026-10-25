@@ -3,7 +3,7 @@
 set -eu
 [ "$(id -u)" = 0 ] || { echo 'Run this installer through pkexec using its absolute path.' >&2; exit 1; }
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-apk add python3 py3-gobject3 gtk4.0 polkit
+apk add aria2 python3 py3-gobject3 gtk4.0 polkit
 root=/usr/local/lib/dc1-waydroid-setup
 install -d -m755 "$root" /usr/local/bin /usr/local/share/applications
 install -m644 "$here/setup/backend.py" "$here/setup/gui.py" "$here/images.json" "$here/images-gapps.json" "$here/waydroid.config" "$root/"

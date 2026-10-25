@@ -268,6 +268,11 @@ state and configuration checks. **Copy report** includes the last operation's
 status. Review it before posting with a description of the problem. It excludes
 journals, account details, network addresses and device identifiers.
 
+Downloads use aria2 with up to four connections, retries and resume support.
+SourceForge selects the mirror through its download endpoint. Partial files and
+aria2's control files stay in the cache after an interrupted transfer; retrying
+resumes them. Size and SHA256 checks must pass before an image is used.
+
 During downloads, the progress bar shows the current image, downloaded MiB,
 average speed and estimated time remaining for that file. Verification,
 extraction and package installation show their current stage without a percentage.
@@ -302,13 +307,16 @@ pkexec /usr/local/bin/dc1-waydroid-setup remove --erase-data
 
 ### Helper validation
 
-Fifteen automated tests cover image verification and selection, repeat setup,
+Seventeen unit tests and an aria2 integration test cover image verification and selection, repeat setup,
 existing-install protection, configuration preservation, removal defaults,
 explicit erasure and active-mount refusal. The GUI launches on the DC-1 and its
 report detects the running container and installed packages. We verified that
 setup refuses the existing Android installation. We have not run a fresh
 end-to-end installation or destructive removal through the helper on hardware;
-GApps remains untested on the DC-1.
+GApps remains untested on the DC-1. The aria2 downloader completed both Vanilla
+images on the tablet with matching SHA256 hashes. A local HTTP fixture verified
+that interrupting aria2 and retrying sends a nonzero Range request and produces
+the exact original file.
 
 ### Manual setup
 
