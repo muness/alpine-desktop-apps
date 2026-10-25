@@ -12,6 +12,11 @@ Neo loaded a web page. Completed sign-in, browser integration and long-term
 use were not independently verified. No compatibility is claimed for other
 machines, distributions or desktop sessions. See [what was tested](docs/testing.md).
 
+There is also a separate, native [Tailscale Quick Settings applet](docs/tailscale.md).
+Alpine supplies the daemon; this repository packages the GNOME extension.
+Build it with `./scripts/build-tailscale-qs-apk.sh`. It does not need the large
+glibc runtime or the desktop-apps APK.
+
 There is no hosted APK repository or binary release here. Build locally if
 you want to try it. Vendor binaries, runtime archives and signing keys are
 not committed.
@@ -49,7 +54,7 @@ script. Keep it outside tracked source files.
 
 ## Try the APK
 
-The current build produces **one APK containing all three apps**. It has been
+The desktop runtime build produces **one APK containing all three apps**. It has been
 installed, removed and reinstalled on the trial DC-1. Review the recipe before
 trusting a local build.
 

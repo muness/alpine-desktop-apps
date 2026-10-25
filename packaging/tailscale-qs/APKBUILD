@@ -1,0 +1,27 @@
+# Maintainer: Muness Castle <931+muness@users.noreply.github.com>
+pkgname=gnome-shell-extension-tailscale-qs
+pkgver=11
+pkgrel=0
+pkgdesc="Tailscale controls for GNOME Quick Settings (experimental packaging)"
+url="https://github.com/tailscale-qs/tailscale-gnome-qs"
+arch="noarch"
+license="GPL-3.0-only"
+depends="tailscale gjs libsoup3"
+makedepends="unzip"
+options="!check"
+source="tailscale-qs-$pkgver.zip::https://github.com/tailscale-qs/tailscale-gnome-qs/releases/download/v$pkgver/tailscale-gnome-qs%40tailscale-qs.github.io.zip
+	LICENSE::https://raw.githubusercontent.com/tailscale-qs/tailscale-gnome-qs/5330071aae8868c9f4daec35869be79c072fdf19/LICENSE"
+builddir="$srcdir"
+
+package() {
+	local extension="$pkgdir/usr/share/gnome-shell/extensions/tailscale-gnome-qs@tailscale-qs.github.io"
+	for file in metadata.json extension.js tailscale.js mullvad.js icons/tailscale-symbolic.svg; do
+		install -Dm644 "$srcdir/$file" "$extension/$file"
+	done
+	install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
+
+sha512sums="
+e443e0c776f6e9c065df6c4e6e55183697fe8d1ac5c76b647d9c3276b7a4dc7912092ff6e31f12d17275d704ca37c4fc5ad9c4fdf059d91018c686878021efb6  tailscale-qs-11.zip
+d361e5e8201481c6346ee6a886592c51265112be550d5224f1a7a6e116255c2f1ab8788df579d9b8372ed7bfd19bac4b6e70e00b472642966ab5b319b99a2686  LICENSE
+"

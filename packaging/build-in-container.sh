@@ -1,16 +1,24 @@
 #!/bin/sh
 set -eu
-apk add --no-cache abuild alpine-sdk zstd tar pigz
+apk add --no-cache abuild alpine-sdk zstd tar pigz unzip
 # abuild resolves its virtual build dependencies from these indexes.
 apk update
 adduser -D builder
 addgroup builder abuild
-mkdir -p /home/builder/work/desktop-apps /home/builder/.abuild /out/apk /out/keys /out/private
+recipe=${1:-desktop-apps}
+case "$recipe" in desktop-apps|tailscale-qs) ;; *) echo 'Unknown recipe' >&2; exit 2 ;; esac
+work=/home/builder/work/$recipe
+mkdir -p "$work" /home/builder/.abuild /out/apk /out/keys /out/private
 chmod 700 /out/private
-cp /recipe/APKBUILD /recipe/desktop-apps-runtime /recipe/1password /recipe/chatgpt \
- /recipe/browseros-neo /recipe/browseros-neo.desktop /recipe/onepassword.desktop /recipe/chatgpt.desktop /home/builder/work/desktop-apps/
-# This is a local generated input, never an unchecked remote source.
-ln -s /out/runtime.tar.zst /home/builder/work/desktop-apps/runtime.tar.zst
+case "$recipe" in
+ desktop-apps)
+  cp /recipe/APKBUILD /recipe/desktop-apps-runtime /recipe/1password /recipe/chatgpt \
+   /recipe/browseros-neo /recipe/browseros-neo.desktop /recipe/onepassword.desktop /recipe/chatgpt.desktop "$work/"
+  # This is a local generated input, never an unchecked remote source.
+  ln -s /out/runtime.tar.zst "$work/runtime.tar.zst"
+  ;;
+ tailscale-qs) cp /recipe/tailscale-qs/APKBUILD "$work/" ;;
+esac
 chown -R builder:builder /home/builder
 if [ -f /out/private/packager.rsa ]; then
  cp /out/private/packager.rsa /out/keys/packager.rsa.pub /home/builder/.abuild/
@@ -29,7 +37,12 @@ cp /home/builder/.abuild/packager.rsa /out/private/
 chmod 600 /out/private/packager.rsa
 cp /home/builder/.abuild/packager.rsa.pub /out/keys/
 cp /home/builder/.abuild/packager.rsa.pub /etc/apk/keys/
-su builder -c 'cd /home/builder/work/desktop-apps && abuild checksum && abuild -r'
+# Only the locally generated runtime recipe needs generated checksums.
+# Remote-source recipes retain their reviewed, committed checksum pins.
+if [ "$recipe" = desktop-apps ]; then
+ su builder -c "cd '$work' && abuild checksum"
+fi
+su builder -c "cd '$work' && abuild -r"
 find /home/builder/packages -name '*.apk' -exec cp '{}' /out/apk/ ';'
 for package in /out/apk/*.apk; do
  apk --repositories-file /dev/null --keys-dir /out/keys verify "$package"

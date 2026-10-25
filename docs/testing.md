@@ -116,3 +116,14 @@ The temporary override was restored after testing.
 Evidence: [DC-1 issue #13](https://github.com/denysvitali/dc-1-pmos/issues/13).
 The [draft kernel fix](https://github.com/denysvitali/dc-1-linux-kernel/pull/5)
 compiled, but a patched-kernel boot and cable/role-transition tests remain pending.
+
+## Native Tailscale applet
+
+The separate Tailscale QS APK was built, installed, removed and reinstalled.
+After browser sign-in, the daemon was online with no health warnings. The
+installed applet's control model successfully disconnected and reconnected
+the VPN as the desktop user. See [setup and exact checks](tailscale.md).
+
+After the desktop-apps trial, the owner requested BrowserOS neo as the default
+browser and removal of Firefox. Those changes were applied on the tablet.
+The earlier Firefox observations above describe the original trial.

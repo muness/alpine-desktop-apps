@@ -9,8 +9,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check shell syntax
         run: |
-          bash -n scripts/build-runtime.sh scripts/build-apk.sh
-          for file in packaging/APKBUILD packaging/build-in-container.sh packaging/desktop-apps-runtime packaging/1password packaging/chatgpt packaging/browseros-neo packaging/portal-xdg-open; do
+          bash -n scripts/build-runtime.sh scripts/build-apk.sh scripts/build-tailscale-qs-apk.sh
+          for file in packaging/APKBUILD packaging/tailscale-qs/APKBUILD packaging/build-in-container.sh packaging/desktop-apps-runtime packaging/1password packaging/chatgpt packaging/browseros-neo packaging/portal-xdg-open; do
             sh -n "$file"
           done
       - name: Check whitespace
