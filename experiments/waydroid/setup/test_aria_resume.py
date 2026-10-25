@@ -35,6 +35,7 @@ class AriaResumeTest(unittest.TestCase):
    assert hashlib.sha256(Path(d,'image.partial').read_bytes()).digest()==hashlib.sha256(payload).digest()
    print('Real aria2 interruption/resume passed: nonzero Range request, complete SHA256 match')
   server.shutdown()
+  server.server_close()
 
  @unittest.skipUnless(shutil.which("aria2c"), "aria2c is not installed")
  def test_manager_stop_and_resume(self):
@@ -83,5 +84,6 @@ class AriaResumeTest(unittest.TestCase):
    assert Path(d,'test.zip').read_bytes()==payload
    print('Manager STOP_DOWNLOAD protocol: aria2 stopped, metadata retained, resumed Range and SHA256 passed')
   server.shutdown()
+  server.server_close()
 
 if __name__ == "__main__": unittest.main()
