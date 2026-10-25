@@ -268,6 +268,10 @@ state and configuration checks. **Copy report** includes the last operation's
 status. Review it before posting with a description of the problem. It excludes
 journals, account details, network addresses and device identifiers.
 
+During downloads, the progress bar shows the current image, downloaded MiB,
+average speed and estimated time remaining for that file. Verification,
+extraction and package installation show their current stage without a percentage.
+
 Setup refuses to reinitialize an existing Android installation or switch its
 image choice. A failed setup can resume with the same choice; completed archives
 are retained and verified again.

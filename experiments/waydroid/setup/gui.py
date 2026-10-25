@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Native GTK4 front end for the Waydroid userspace setup helper."""
 import os
+import re
 from pathlib import Path
 import subprocess
 import threading
@@ -52,7 +53,13 @@ class SetupApp(Gtk.Application):
         help_link.set_halign(Gtk.Align.START); box.append(help_link)
         self.status = Gtk.Label(label='Ready to check your system.', xalign=0, wrap=True)
         self.status.set_selectable(True); box.append(self.status)
-        self.spinner = Gtk.Spinner(); self.spinner.set_halign(Gtk.Align.START); box.append(self.spinner)
+        self.progress = Gtk.ProgressBar(show_text=True)
+        self.progress.set_text('Ready')
+        box.append(self.progress)
+        self.progress_detail = Gtk.Label(xalign=0, wrap=True, selectable=True)
+        box.append(self.progress_detail)
+        self.determinate = False
+        GLib.timeout_add(200, self.pulse_progress)
         actions = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         box.append(actions)
         self.buttons = []
@@ -78,10 +85,32 @@ class SetupApp(Gtk.Application):
         for button in self.buttons: button.set_sensitive(not value)
         self.copy.set_sensitive(not value)
         self.choice.set_sensitive(not value)
-        if value: self.spinner.start()
-        else: self.spinner.stop()
+        if value:
+            self.determinate = False
+            self.progress.set_fraction(0)
+            self.progress.set_text('Working…')
+            self.progress_detail.set_text('')
+
+    def pulse_progress(self):
+        if self.busy and not self.determinate:
+            self.progress.pulse()
+        return True
 
     def append(self, text):
+        match = re.match(r'Downloading ([^:]+): (\d+)% (.*)', text)
+        if match:
+            self.determinate = True
+            self.progress.set_fraction(min(100, int(match[2])) / 100)
+            self.progress.set_text(f'{match[1]} download — {match[2]}%')
+            self.progress_detail.set_text(match[3])
+            self.status.set_text('Downloading Android images. Time remaining is an estimate for this file.')
+            # Keep the diagnostic log readable rather than adding every refresh.
+            return False
+        if self.busy and text and '\n' not in text:
+            self.determinate = False
+            self.progress.set_fraction(0)
+            self.progress.set_text(text)
+            self.progress_detail.set_text('')
         buffer = self.text.get_buffer()
         buffer.insert(buffer.get_end_iter(), text + '\n')
         return False
@@ -117,6 +146,8 @@ class SetupApp(Gtk.Application):
 
     def finish(self, message):
         self.status.set_text(message); self.set_busy(False)
+        self.progress.set_fraction(0)
+        self.progress.set_text('Stopped' if 'stopped' in message.lower() or 'cancelled' in message.lower() or 'could not' in message.lower() else 'Finished')
         return False
 
     def check(self, *_):

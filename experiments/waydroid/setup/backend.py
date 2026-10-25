@@ -92,6 +92,7 @@ def download(pin, directory):
         with urllib.request.urlopen(request, timeout=60) as src, partial.open('wb') as dst:
             received = 0
             last_notice = None
+            started = time.monotonic()
             while chunk := src.read(1024 * 1024):
                 received += len(chunk)
                 if received > pin['size']:
@@ -99,9 +100,14 @@ def download(pin, directory):
                 dst.write(chunk)
                 now = time.monotonic()
                 if last_notice is None or now - last_notice >= 2 or received == pin['size']:
+                    rate = received / max(now - started, 0.001)
+                    remaining = max(0, pin['size'] - received) / rate
+                    eta = f"{int(remaining // 60)}m {int(remaining % 60)}s left" if received < pin['size'] else 'download complete'
                     emit(f"Downloading {pin['romtype']}: {received * 100 // pin['size']}% "
-                         f"({received / 1024**2:.1f} / {pin['size'] / 1024**2:.1f} MiB)")
+                         f"({received / 1024**2:.1f} / {pin['size'] / 1024**2:.1f} MiB) · "
+                         f"{rate / 1024:.0f} KiB/s · {eta}")
                     last_notice = now
+        emit('Verifying SHA256: ' + pin['filename'])
         if partial.stat().st_size != pin['size'] or sha(partial) != pin['id']:
             raise SetupError('Download checksum failed: ' + pin['filename'] + '. Retry to download it again.')
         partial.replace(target)
