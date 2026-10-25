@@ -15,8 +15,11 @@ jobs:
           done
       - name: Check Waydroid experiment
         run: |
-          sh -n experiments/waydroid/prepare-kernel.sh experiments/waydroid/arm-recovery.sh experiments/waydroid/accept-kernel.sh
+          sh -n experiments/waydroid/install-setup.sh experiments/waydroid/prepare-kernel.sh experiments/waydroid/arm-recovery.sh experiments/waydroid/accept-kernel.sh
           python3 -m py_compile experiments/waydroid/fetch-images.py experiments/waydroid/dc1-waydroid-rollback
           python3 -m json.tool experiments/waydroid/images.json > /dev/null
+          python3 -m json.tool experiments/waydroid/images-gapps.json > /dev/null
+          python3 -m py_compile experiments/waydroid/setup/backend.py experiments/waydroid/setup/gui.py
+          python3 -m unittest discover -s experiments/waydroid/setup -v
       - name: Check whitespace
         run: git show --format= --check HEAD

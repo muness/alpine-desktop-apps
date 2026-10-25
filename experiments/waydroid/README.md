@@ -236,6 +236,78 @@ review.
 
 ## Android userspace
 
+### Setup app
+
+The tested installation uses **Vanilla Android, without GApps**. The setup app
+lets new installations choose Vanilla or GApps (Google Play services). GApps
+has not been boot-tested on the DC-1 and may require
+[Google Play device registration](https://docs.waydro.id/faq/google-play-certification).
+
+After installing and booting the Waydroid-capable kernel, install the helper
+from this repository on the tablet:
+
+```sh
+pkexec /bin/sh "$(pwd)/experiments/waydroid/install-setup.sh"
+```
+
+The checker reads `/proc/config.gz` or `/boot/config-$(uname -r)`. If neither
+exists, copy the **full `.config` from the running kernel's build** to the latter
+path as root. Do not use `waydroid.config`: it is only a fragment. Without a
+matching full config, setup stops and the report says the requirements are
+unreadable.
+
+Open **Waydroid Setup** from Applications. Choose an image, then **Set up
+Android**. The helper installs the Alpine packages, verifies the pinned image
+sizes and SHA256 hashes, applies the interpreter settings and enables the
+container. It needs 6 GiB free and downloads 1–1.5 GB. It never flashes a kernel
+or changes boot slots. Download it before starting a timed kernel test; the
+setup can take longer than the recovery timer.
+
+**Check / report** collects kernel requirements, package versions, container
+state and configuration checks. **Copy report** includes the last operation's
+status. Review it before posting with a description of the problem. It excludes
+journals, account details, network addresses and device identifiers.
+
+Setup refuses to reinitialize an existing Android installation or switch its
+image choice. A failed setup can resume with the same choice; completed archives
+are retained and verified again.
+
+### Remove Android
+
+Choose **Remove Android…** in Waydroid Setup. By default, this stops the
+container and removes the Waydroid packages while keeping Android apps, data
+and images. Check **Also delete Android apps, data and downloaded images** for
+a clean start, including switching between Vanilla and GApps. Deletion cannot
+be undone. It removes shared Android data and the invoking desktop user's
+Android data; other desktop users' home directories are untouched.
+
+Removal leaves the Linux kernel, boot slots and recovery files in place. It
+refuses to delete files while Android mounts remain active. The setup app stays
+installed so you can collect a report or reinstall Android.
+
+The same operations are available from a terminal:
+
+```sh
+dc1-waydroid-setup report
+pkexec /usr/local/bin/dc1-waydroid-setup setup --variant vanilla
+# Or choose --variant gapps for a new installation.
+pkexec /usr/local/bin/dc1-waydroid-setup remove
+# Delete apps, data and images too (irreversible):
+pkexec /usr/local/bin/dc1-waydroid-setup remove --erase-data
+```
+
+### Helper validation
+
+Fifteen automated tests cover image verification and selection, repeat setup,
+existing-install protection, configuration preservation, removal defaults,
+explicit erasure and active-mount refusal. The GUI launches on the DC-1 and its
+report detects the running container and installed packages. We verified that
+setup refuses the existing Android installation. We have not run a fresh
+end-to-end installation or destructive removal through the helper on hardware;
+GApps remains untested on the DC-1.
+
+### Manual setup
+
 Download the pinned official images before the timed test:
 
 ```sh
