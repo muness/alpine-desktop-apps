@@ -16,7 +16,7 @@ From the repository root:
 ./scripts/build-obsidian-apk.sh
 ```
 
-Output: `out/apk/obsidian-glibc-experimental-1.14.5-r0.apk`, roughly 130 MB
+Output: `out/apk/obsidian-glibc-experimental-1.14.5-r1.apk`, roughly 130 MB
 compressed and 348 MB unpacked. The build uses the existing local signing key,
 or creates one using the same helper as the other recipes.
 
@@ -43,8 +43,8 @@ containing those files:
 
 ```sh
 apk --repositories-file /dev/null --keys-dir . verify \
-    ./obsidian-glibc-experimental-1.14.5-r0.apk
-apk add ./obsidian-glibc-experimental-1.14.5-r0.apk
+    ./obsidian-glibc-experimental-1.14.5-r1.apk
+apk add ./obsidian-glibc-experimental-1.14.5-r1.apk
 ```
 
 Start **Obsidian** from the app grid, or run `obsidian` in your Wayland desktop
@@ -64,6 +64,11 @@ The add-on owns `/usr/bin/obsidian`, its desktop entry and
 mount includes those files. The launcher uses its existing `shell` entry point
 to run Obsidian with native Wayland and the setuid sandbox helper disabled.
 It does not pass `--no-sandbox`.
+
+The launcher gives the app a separate `XDG_CACHE_HOME` at
+`${XDG_CACHE_HOME:-$HOME/.cache}/obsidian-runtime`. This prevents the older
+runtime fontconfig from sharing the host's newer font-cache files. It leaves
+your vaults and Obsidian settings at their existing paths.
 
 To update the installer, review a new official ARM64 tarball, update the URL,
 version and checksums, then rebuild and install the add-on APK. The base runtime
@@ -98,3 +103,22 @@ Logs reported native EGL initialization failures because the existing runtime
 lacks `libEGL.so.1`. The app continued and opened its workspace, but hardware
 acceleration is unverified. Heavy graphs, community plugins, Sync, account
 sign-in, the optional CLI setting and long-term use were not tested.
+
+## Manage Vaults crash and r1 fix
+
+The initial r0 launcher shared the host cache. On the test tablet, opening
+Manage Vaults aborted the main process with
+`SkFontMgr_FontConfigInterface.cpp:163] Not implemented.` Startup also warned
+that font-cache files came from a newer fontconfig version. The same vault
+manager stayed running when launched with a separate cache, and the owner
+confirmed it was usable; no font-cache warning appeared in that process. Package r1 makes that isolation permanent.
+The host cache was retained, and no profile or vault reset was needed.
+An unrelated device reboot interrupted the first APK upgrade. After the tablet
+returned, the signed r1 upgrade completed and the installed launcher reopened
+Manage Vaults without a font-cache warning or fatal error. Sync stability
+remains unverified.
+
+This follow-up ran with the owner's in-profile 1.15.0 insider app update;
+the APK still contains the official 1.14.5 installer. The earlier note-saving
+and removal checks used the original packaged app. Further app-update
+compatibility remains unverified.

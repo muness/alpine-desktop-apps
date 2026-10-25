@@ -1,7 +1,7 @@
 # Maintainer: Muness Castle <931+muness@users.noreply.github.com>
 pkgname=obsidian-glibc-experimental
 pkgver=1.14.5
-pkgrel=0
+pkgrel=1
 pkgdesc="Obsidian ARM64 addon for the experimental desktop runtime"
 url="https://obsidian.md"
 arch="aarch64"
@@ -27,6 +27,6 @@ package() {
 
 sha512sums="
 2ea90c04e97eeb1f81a36fea9ecf985caacb4fe8a0897f440a24308e70f87adb6d12c7063298fb32897256542f6dbb3ae67809b3d1bff3bb143f19ddf8015d36  obsidian-1.14.5-arm64.tar.gz
-39b0113dc1174334ebd5b59176af175f208078164bfc990c0d84530eca78f4ef9b0ba6f8bc0f639b3b2348e85226f29e77a0919b950822c288ff10199f7da180  obsidian
+49c3a70c9b1c18d47f81359f2c50ad25dcf6f02a2aa15d5421d115d48e0a0409be22196d359a2b06cd761928522891dda0c6fc2d743318654198322695aa921f  obsidian
 0177ee17403b782e7e2abcdb550d64c3dac4fbfadbd7aa8b58b1b82cdef7bfebea9c4cf73cdde30743670bb03429f7f80015c3532090ccfb7039458f67383c3d  obsidian.desktop
 "

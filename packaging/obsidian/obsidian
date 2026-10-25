@@ -1,4 +1,6 @@
 #!/bin/sh
+# Keep the older runtime fontconfig cache separate from the host cache.
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}/obsidian-runtime"
 # Use the installed runtime without replacing its other apps or launcher.
 exec /usr/bin/desktop-apps-runtime shell -c \
  'exec /opt/obsidian/obsidian --ozone-platform=wayland --disable-setuid-sandbox "$@"' obsidian "$@"

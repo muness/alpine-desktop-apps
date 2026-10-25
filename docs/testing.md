@@ -145,3 +145,5 @@ removal and reinstall on the DC-1. Removal preserved the shared runtime and
 its other app executables. The packaged Obsidian launcher opened a dedicated
 test vault and successfully saved a note append. See [exact checks and
 limitations](obsidian.md), including the renderer and EGL observations.
+The r1 follow-up isolates Obsidian’s font cache after a reproducible Manage
+Vaults crash with the shared host cache.
