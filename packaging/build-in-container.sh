@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-apk add --no-cache abuild alpine-sdk zstd tar
+apk add --no-cache abuild alpine-sdk zstd tar pigz
 # abuild resolves its virtual build dependencies from these indexes.
 apk update
 adduser -D builder
@@ -24,10 +24,12 @@ fi
 printf '%s\n' 'PACKAGER_PRIVKEY="/home/builder/.abuild/packager.rsa"' \
  'REPODEST="/home/builder/packages"' > /home/builder/.abuild/abuild.conf
 chown -R builder:builder /home/builder/.abuild
-su builder -c 'cd /home/builder/work/desktop-apps && abuild checksum && abuild -r'
+# Keep the key even if a build fails, and trust it only in this container.
 cp /home/builder/.abuild/packager.rsa /out/private/
 chmod 600 /out/private/packager.rsa
 cp /home/builder/.abuild/packager.rsa.pub /out/keys/
+cp /home/builder/.abuild/packager.rsa.pub /etc/apk/keys/
+su builder -c 'cd /home/builder/work/desktop-apps && abuild checksum && abuild -r'
 find /home/builder/packages -name '*.apk' -exec cp '{}' /out/apk/ ';'
 for package in /out/apk/*.apk; do
  apk verify --keys-dir /out/keys "$package"
