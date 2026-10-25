@@ -238,9 +238,8 @@ review.
 
 ### Setup app
 
-The tested installation uses **Vanilla Android, without GApps**. The setup app
-lets new installations choose Vanilla or GApps (Google Play services). GApps
-has not been boot-tested on the DC-1 and may require
+Choose **Vanilla** without Google services or **GApps** with Google Play.
+Both images have been confirmed working on our DC-1. GApps may require
 [Google Play device registration](https://docs.waydro.id/faq/google-play-certification).
 
 After installing and booting the Waydroid-capable kernel, install the helper
@@ -271,7 +270,9 @@ journals, account details, network addresses and device identifiers.
 Downloads use aria2 with up to four connections, retries and resume support.
 SourceForge selects the mirror through its download endpoint. Partial files and
 aria2's control files stay in the cache after an interrupted transfer; retrying
-resumes them. Size and SHA256 checks must pass before an image is used.
+resumes them. **Stop download** preserves progress; **Resume setup** continues
+with the same image choice. Stop is available only during downloading, not
+package installation or image extraction. Size and SHA256 checks must pass before an image is used.
 
 During downloads, the progress bar shows the current image, downloaded MiB,
 average speed and estimated time remaining for that file. Verification,
@@ -280,6 +281,11 @@ extraction and package installation show their current stage without a percentag
 Setup refuses to reinitialize an existing Android installation or switch its
 image choice. A failed setup can resume with the same choice; completed archives
 are retained and verified again.
+
+**Open Android** checks Android’s boot-completed property for up to three
+minutes. If startup fails or times out, the manager keeps the error visible and
+opens the diagnostic report. It leaves Android running after a timeout so a slow
+startup can still finish.
 
 ### Remove Android
 
@@ -307,13 +313,12 @@ pkexec /usr/local/bin/dc1-waydroid-setup remove --erase-data
 
 ### Helper validation
 
-Seventeen unit tests and an aria2 integration test cover image verification and selection, repeat setup,
+Unit and aria2 integration tests cover image verification and selection, repeat setup,
 existing-install protection, configuration preservation, removal defaults,
 explicit erasure and active-mount refusal. The GUI launches on the DC-1 and its
 report detects the running container and installed packages. We verified that
-setup refuses the existing Android installation. We have not run a fresh
-end-to-end installation or destructive removal through the helper on hardware;
-GApps remains untested on the DC-1. The aria2 downloader completed both Vanilla
+setup refuses the existing Android installation. The owner completed removal and installation through the GUI and confirmed
+both Vanilla and GApps work. The aria2 downloader completed both Vanilla
 images on the tablet with matching SHA256 hashes. A local HTTP fixture verified
 that interrupting aria2 and retrying sends a nonzero Range request and produces
 the exact original file.
@@ -450,6 +455,7 @@ For scripts, the equivalent command is (run as root):
 waydroid shell -- settings put secure show_ime_with_hard_keyboard 0
 ```
 
+This Android preference persists across boots; no boot script is needed.
 Use `1` to turn it back on. The [Android Settings toggle](https://github.com/LineageOS/android_packages_apps_Settings/blob/lineage-20.0/src/com/android/settings/inputmethod/PhysicalKeyboardFragment.java)
 writes this same setting. Waydroid exposes a persistent virtual hardware keyboard,
 so Bluetooth disconnection may not automatically bring the screen keyboard back.

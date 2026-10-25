@@ -15,6 +15,8 @@ import subprocess
 import sys
 import re
 import signal
+import threading
+import time
 from urllib.parse import urlsplit
 import zipfile
 
@@ -79,6 +81,38 @@ def sha(path):
     with path.open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
+class DownloadControl:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.process = None
+        self.stopped = False
+
+    def attach(self, process):
+        with self.lock:
+            self.process = process
+            self.stopped = False
+
+    def detach(self):
+        with self.lock:
+            self.process = None
+
+    def stop(self):
+        with self.lock:
+            if self.process is not None and self.process.poll() is None:
+                self.stopped = True
+                try:
+                    self.process.send_signal(signal.SIGINT)
+                except ProcessLookupError:
+                    pass
+
+CONTROL = DownloadControl()
+
+def listen_for_stop():
+    # Commands act only on the current downloader, never package installation.
+    for line in sys.stdin:
+        if line.strip() == 'STOP_DOWNLOAD':
+            CONTROL.stop()
+
 def download(pin, directory):
     directory.mkdir(parents=True, exist_ok=True)
     target = directory/pin['filename']
@@ -110,6 +144,8 @@ def download(pin, directory):
         signal.signal(signal.SIGTERM, interrupted)
         emit('Connecting with aria2; existing partial downloads will resume')
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        CONTROL.attach(process)
+        emit('DOWNLOAD_ACTIVE')
         for line in process.stdout:
             # Only expose numeric progress, never raw downloader URLs or errors.
             match = re.search(r'\[#\w+ (\d+)B?/(\d+)B?\((\d+)%\).*?DL:(\d+)B?(?:.*?ETA:([^\]\s]+))?', line)
@@ -119,7 +155,12 @@ def download(pin, directory):
                 emit(f"Downloading {pin['romtype']}: {min(percent, 100)}% "
                      f"({done / 1024**2:.1f} / {total / 1024**2:.1f} MiB) · "
                      f"{rate / 1024:.0f} KiB/s · {eta} left")
-        if process.wait():
+        result = process.wait()
+        CONTROL.detach()
+        emit('DOWNLOAD_INACTIVE')
+        if CONTROL.stopped:
+            raise SetupError('Download paused. Your progress is saved. Tap Resume setup to continue.')
+        if result:
             raise SetupError('Download failed after aria2 retries. Partial data is retained; retry to resume.')
         emit('Verifying SHA256: ' + pin['filename'])
         if partial.stat().st_size != pin['size'] or sha(partial) != pin['id']:
@@ -132,6 +173,7 @@ def download(pin, directory):
     except FileNotFoundError:
         raise SetupError('aria2 or its download file is missing. Reinstall Waydroid Setup and retry.') from None
     finally:
+        CONTROL.detach()
         if process is not None and process.poll() is None:
             process.send_signal(signal.SIGINT)
             try:
@@ -362,16 +404,43 @@ def report():
             lines.append('Interpreter settings: unreadable')
     return '\n'.join(lines)
 
+def launch_android(timeout=180):
+    if not os.environ.get('WAYLAND_DISPLAY'):
+        raise SetupError('Open the manager from your Wayland desktop session.')
+    emit('Starting Android. First startup can take a few minutes.')
+    process = subprocess.Popen(['waydroid', 'show-full-ui'], stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, start_new_session=True)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        code = process.poll()
+        if code is not None and code != 0:
+            raise SetupError('Android could not open. Check the diagnostic report and container service, then retry.')
+        try:
+            result = subprocess.run(['waydroid', 'prop', 'get', 'sys.boot_completed'],
+                                    capture_output=True, text=True,
+                                    timeout=max(0.1, min(5, deadline - time.monotonic())))
+            if result.returncode == 0 and result.stdout.strip() == '1':
+                emit('Android has finished booting. Switch to its window to continue.')
+                return
+        except subprocess.TimeoutExpired:
+            pass
+        time.sleep(min(2, max(0, deadline - time.monotonic())))
+    raise SetupError('Android has not finished booting after three minutes. It may still be starting; copy the report for help or try Open Android again. Your apps and data are unchanged.')
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['setup', 'check', 'report', 'remove'])
+    parser.add_argument('action', choices=['setup', 'check', 'report', 'remove', 'launch'])
     parser.add_argument('--variant', choices=['vanilla', 'gapps'], default='vanilla', help='Image choice for a new installation only')
     parser.add_argument('--erase-data', action='store_true', help='With remove: also delete Android apps/data for the invoking user and images')
     args = parser.parse_args()
     if args.erase_data and args.action != 'remove':
         parser.error('--erase-data is only valid with remove')
     try:
-        if args.action == 'setup': setup(args.variant)
+        if args.action == 'setup':
+            if not sys.stdin.isatty():
+                threading.Thread(target=listen_for_stop, daemon=True).start()
+            setup(args.variant)
+        elif args.action == 'launch': launch_android()
         elif args.action == 'remove': remove(args.erase_data)
         elif args.action == 'check':
             preflight(); emit('Kernel and host requirements passed.')

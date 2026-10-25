@@ -64,6 +64,25 @@ class BackendTests(unittest.TestCase):
             self.assertIn('1 KiB/s',messages)
             self.assertNotIn('secret',messages)
 
+    def test_stop_only_signals_attached_downloader(self):
+        control=b.DownloadControl();process=MagicMock();process.poll.return_value=None
+        control.stop()
+        control.attach(process);control.stop()
+        process.send_signal.assert_called_once_with(b.signal.SIGINT)
+        self.assertTrue(control.stopped)
+        control.detach();control.stop()
+        self.assertEqual(process.send_signal.call_count,1)
+
+    def test_launch_requires_android_boot_property(self):
+        with patch.dict(b.os.environ,{'WAYLAND_DISPLAY':'wayland-0'}),patch.object(b.subprocess,'Popen') as launch,patch.object(b.subprocess,'run',return_value=b.subprocess.CompletedProcess([],0,stdout='1\n')),patch.object(b.time,'sleep'):
+            launch.return_value.poll.return_value=0
+            b.launch_android()
+
+    def test_launch_times_out_on_misleading_success_output(self):
+        with patch.dict(b.os.environ,{'WAYLAND_DISPLAY':'wayland-0'}),patch.object(b.subprocess,'Popen') as launch,patch.object(b.subprocess,'run',return_value=b.subprocess.CompletedProcess([],0,stdout='WayDroid session is stopped')),patch.object(b.time,'sleep'),patch.object(b.time,'monotonic',side_effect=[0,0,0,4,4]):
+            launch.return_value.poll.return_value=0
+            with self.assertRaisesRegex(b.SetupError,'not finished booting'): b.launch_android(timeout=3)
+
     def test_cached_verified_download_avoids_network(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'system.zip';p.write_bytes(b'good')

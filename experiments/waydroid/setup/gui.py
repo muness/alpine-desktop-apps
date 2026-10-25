@@ -21,6 +21,8 @@ class SetupApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id='io.github.muness.WaydroidSetup', flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
         self.busy = False
+        self.operation_process = None
+        self.paused = False
         self.last_operation = 'No setup attempted.'
         self.connect('activate', self.activate)
 
@@ -59,6 +61,11 @@ class SetupApp(Gtk.Application):
         box.append(self.progress)
         self.progress_detail = Gtk.Label(xalign=0, wrap=True, selectable=True)
         box.append(self.progress_detail)
+        self.stop_button = Gtk.Button(label='Stop download')
+        self.stop_button.set_size_request(-1, 64)
+        self.stop_button.set_visible(False)
+        self.stop_button.connect('clicked', self.stop_download)
+        box.append(self.stop_button)
         self.determinate = False
         GLib.timeout_add(200, self.pulse_progress)
         outer = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
@@ -67,7 +74,7 @@ class SetupApp(Gtk.Application):
         outer.set_child(content)
         self.guidance = Gtk.Label(xalign=0, wrap=True, selectable=True)
         content.append(self.guidance)
-        self.choice = Gtk.DropDown.new_from_strings(['Vanilla — no Google apps (tested)', 'GApps — Google Play (untested)'])
+        self.choice = Gtk.DropDown.new_from_strings(['Vanilla — no Google apps', 'GApps — Google Play'])
         self.choice.set_size_request(-1, 64)
         content.append(self.choice)
         self.choice_note = Gtk.Label(xalign=0, wrap=True)
@@ -106,6 +113,7 @@ class SetupApp(Gtk.Application):
 
     def set_busy(self, value):
         self.busy = value
+        self.stop_button.set_visible(False)
         self.progress.set_visible(value)
         self.progress_detail.set_visible(value)
         for button in self.buttons: button.set_sensitive(not value)
@@ -122,7 +130,21 @@ class SetupApp(Gtk.Application):
             self.progress.pulse()
         return True
 
+    def stop_download(self, *_):
+        process = self.operation_process
+        if process is not None and process.poll() is None and process.stdin:
+            try:
+                process.stdin.write('STOP_DOWNLOAD\n'); process.stdin.flush()
+                self.stop_button.set_sensitive(False)
+                self.status.set_text('Stopping the download and saving progress…')
+            except (BrokenPipeError, OSError):
+                self.stop_button.set_visible(False)
+
     def append(self, text):
+        if text in ('DOWNLOAD_ACTIVE', 'DOWNLOAD_INACTIVE'):
+            self.stop_button.set_visible(text == 'DOWNLOAD_ACTIVE' and self.busy)
+            self.stop_button.set_sensitive(True)
+            return False
         match = re.match(r'Downloading ([^:]+): (\d+)% (.*)', text)
         if match:
             self.determinate = True
@@ -152,7 +174,8 @@ class SetupApp(Gtk.Application):
             report_text = ''
             code = 1
             try:
-                process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+                process = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+                self.operation_process = process
                 for line in process.stdout:
                     line = line.rstrip(); lines.append(line)
                     GLib.idle_add(self.append, line)
@@ -164,7 +187,9 @@ class SetupApp(Gtk.Application):
                     message = next((line.removeprefix('ERROR: ') for line in reversed(lines) if line.startswith('ERROR: ')), 'Operation stopped. Copy the report for help, then retry.')
                 else:
                     message = 'Setup complete. Open Android to start your session.' if action == 'setup' else ('Android removed. See the report for what was retained.' if action == 'remove' else 'Report ready. Review it before sharing.')
-                if action in ('setup', 'remove'):
+                if action == 'launch' and code == 0:
+                    message = 'Android has finished booting. Switch to its window to continue.'
+                if action in ('setup', 'remove', 'launch'):
                     # Backend output consists only of authored status lines.
                     self.last_operation = '\n'.join(lines[-12:]) or message
                     diagnostic = subprocess.run(['/usr/bin/python3', BACKEND, 'report'], capture_output=True, text=True, timeout=30)
@@ -177,7 +202,7 @@ class SetupApp(Gtk.Application):
 
     def explain_choice(self, *_):
         self.choice_note.set_text(
-            'Google Play and Google services. Device registration may be required; this image is not yet fully tested here.'
+            'Google Play and Google services. Device registration may be required.'
             if self.choice.get_selected() == 1 else
             'No Google services. Install Android APKs directly, or add F-Droid or Aurora Store.')
 
@@ -194,12 +219,13 @@ class SetupApp(Gtk.Application):
             'Choose an Android image, then tap Set up Android. You need 6 GiB free; downloads resume if interrupted.' if kernel else
             'The running kernel has not passed the requirements check. Open the setup guide below before installing Android.')
         self.choice.set_visible(not present)
+        self.choice.set_sensitive(not self.paused and not self.busy)
         self.choice_note.set_visible(not present)
         setup, launch, _, remove = self.buttons
         setup.set_visible(not ready)
         self.actions.remove(launch)
         self.actions.attach(launch, 0 if ready else 1, 0, 2 if ready else 1, 1)
-        setup.set_label('Retry setup' if present else 'Set up Android')
+        setup.set_label('Resume setup' if self.paused else 'Retry setup' if present else 'Set up Android')
         setup.set_sensitive(kernel and not self.busy)
         launch.set_sensitive(present and packaged and not self.busy)
         remove.set_sensitive((present or packaged) and not self.busy)
@@ -208,6 +234,9 @@ class SetupApp(Gtk.Application):
         return ready
 
     def finish(self, message, report='', action='', code=0):
+        self.operation_process = None
+        if action == 'remove' and code == 0: self.paused = False
+        if action == 'setup': self.paused = 'Download paused.' in message
         self.set_busy(False)
         ready = self.apply_report(report) if report else False
         if action == 'report' and code == 0:
@@ -253,13 +282,7 @@ class SetupApp(Gtk.Application):
         dialog.present()
 
     def launch(self, *_):
-        if not os.environ.get('WAYLAND_DISPLAY'):
-            self.status.set_text('Open this app from your Wayland desktop session.'); return
-        try:
-            subprocess.Popen(['waydroid', 'show-full-ui'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-            self.status.set_text('Android launch requested. First startup can take two minutes. Use Check / report if no window appears.')
-        except OSError:
-            self.status.set_text('Waydroid is not installed. Run Set up Android first.')
+        self.task(['/usr/bin/python3', BACKEND, 'launch'], 'launch')
 
     def copy_report(self, *_):
         buffer = self.text.get_buffer()
