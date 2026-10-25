@@ -10,7 +10,7 @@ import sys
 try:
     import gi
     gi.require_version('Gtk', '4.0')
-    from gi.repository import Gtk, Gio, GLib
+    from gi.repository import Gtk, Gio, GLib, Gdk, Pango
 except (ImportError, ValueError):
     sys.exit('Install gtk4.0 and py3-gobject3, then launch Waydroid Setup again.')
 
@@ -28,55 +28,71 @@ class SetupApp(Gtk.Application):
         if self.get_active_window():
             self.get_active_window().present(); return
         self.window = Gtk.ApplicationWindow(application=self, title='Waydroid Setup')
-        self.window.set_default_size(680, 800)
+        self.window.set_default_size(1100, 850)
+        self.window.maximize()
+        self.window.add_css_class('waydroid-setup')
+        css = Gtk.CssProvider()
+        css.load_from_data(b"""
+            .waydroid-setup { font-size: 18px; }
+            .waydroid-setup .title-1 { font-size: 28px; }
+            .waydroid-setup button, .waydroid-setup dropdown { min-height: 56px; }
+            .waydroid-setup progressbar trough, .waydroid-setup progressbar progress { min-height: 18px; border-radius: 9px; }
+            .waydroid-setup expander > title { min-height: 48px; }
+            .waydroid-setup textview { font-size: 15px; }
+        """)
+        Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self.window.connect('close-request', lambda *_: self.busy)
         header = Gtk.HeaderBar()
         self.window.set_titlebar(header)
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         for edge in ('top', 'bottom', 'start', 'end'):
-            getattr(box, 'set_margin_' + edge)(20)
-        outer = Gtk.ScrolledWindow()
-        outer.set_child(box)
-        self.window.set_child(outer)
+            getattr(box, 'set_margin_' + edge)(24)
+        self.window.set_child(box)
         title = Gtk.Label(label='Android on your DC-1', xalign=0)
         title.add_css_class('title-1'); box.append(title)
-        intro = Gtk.Label(label='Install the Android environment, open it, or collect a report for help.\nThe Waydroid-capable kernel must already be installed and booted.', xalign=0, wrap=True)
-        box.append(intro)
-        note = Gtk.Label(label='Setup downloads 1–1.5 GB and needs 6 GiB free. Interpreter mode avoids the current Android crash but makes apps slower. Existing Android data is left alone.', xalign=0, wrap=True)
-        box.append(note)
-        self.choice = Gtk.DropDown.new_from_strings(['Vanilla — no Google apps (tested)', 'GApps — Google Play (untested)'])
-        self.choice.set_size_request(-1, 44)
-        box.append(self.choice)
-        google_note = Gtk.Label(label='GApps includes Google services and can require device registration. Vanilla can use F-Droid or Aurora Store.', xalign=0, wrap=True)
-        box.append(google_note)
-        help_link = Gtk.LinkButton.new_with_label('https://docs.waydro.id/faq/google-play-certification', 'Google Play registration instructions')
-        help_link.set_halign(Gtk.Align.START); box.append(help_link)
-        self.status = Gtk.Label(label='Ready to check your system.', xalign=0, wrap=True)
-        self.status.set_selectable(True); box.append(self.status)
+        # This status area stays outside the scroller, including on small screens.
+        self.status = Gtk.Label(label='Ready to check your system.', xalign=0, wrap=True, selectable=True)
+        box.append(self.status)
         self.progress = Gtk.ProgressBar(show_text=True)
+        self.progress.set_ellipsize(Pango.EllipsizeMode.END)
         self.progress.set_text('Ready')
         box.append(self.progress)
         self.progress_detail = Gtk.Label(xalign=0, wrap=True, selectable=True)
         box.append(self.progress_detail)
         self.determinate = False
         GLib.timeout_add(200, self.pulse_progress)
-        actions = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        box.append(actions)
+        outer = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
+        box.append(outer)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        outer.set_child(content)
+        self.choice = Gtk.DropDown.new_from_strings(['Vanilla — no Google apps (tested)', 'GApps — Google Play (untested)'])
+        self.choice.set_size_request(-1, 64)
+        content.append(self.choice)
+        actions = Gtk.Grid(column_spacing=16, row_spacing=16, column_homogeneous=True)
+        content.append(actions)
         self.buttons = []
-        for label, callback in [('Check / report', self.check), ('Set up Android', self.setup), ('Open Android', self.launch), ('Remove Android…', self.confirm_remove)]:
-            button = Gtk.Button(label=label)
-            button.set_size_request(-1, 44)
+        for index, (label, callback) in enumerate([('Set up Android', self.setup), ('Open Android', self.launch), ('Check / report', self.check), ('Remove Android…', self.confirm_remove)]):
+            button = Gtk.Button(label=label, hexpand=True)
+            button.set_size_request(-1, 64)
             button.connect('clicked', callback)
             if label == 'Set up Android': button.add_css_class('suggested-action')
-            self.buttons.append(button); actions.append(button)
+            self.buttons.append(button); actions.attach(button, index % 2, index // 2, 1, 1)
+        info = Gtk.Expander(label='Before you install')
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        info_box.append(Gtk.Label(label='Requires the Waydroid kernel and 6 GiB free. Downloads 1–1.5 GB. Interpreter mode avoids the Android crash but slows apps. Existing Android data is left alone.', xalign=0, wrap=True))
+        info_box.append(Gtk.Label(label='GApps includes Google services and may require device registration. Vanilla can use F-Droid or Aurora Store.', xalign=0, wrap=True))
+        info_box.append(Gtk.LinkButton.new_with_label('https://docs.waydro.id/faq/google-play-certification', 'Google Play registration instructions'))
+        info.set_child(info_box); content.append(info)
         self.text = Gtk.TextView(editable=False, monospace=True, wrap_mode=Gtk.WrapMode.WORD_CHAR)
-        self.text.set_top_margin(10); self.text.set_bottom_margin(10)
-        self.text.set_left_margin(10); self.text.set_right_margin(10)
-        scroll = Gtk.ScrolledWindow(vexpand=True, min_content_height=140)
-        scroll.set_child(self.text); box.append(scroll)
-        self.copy = Gtk.Button(label='Copy report for Discord or GitHub')
-        self.copy.set_size_request(-1, 44)
-        self.copy.connect('clicked', self.copy_report); box.append(self.copy)
+        for edge in ('top', 'bottom', 'left', 'right'):
+            getattr(self.text, 'set_' + edge + '_margin')(12)
+        scroll = Gtk.ScrolledWindow(min_content_height=220)
+        scroll.set_child(self.text)
+        self.details = Gtk.Expander(label='Detailed log and diagnostic report')
+        self.details.set_child(scroll); content.append(self.details)
+        self.copy = Gtk.Button(label='Copy diagnostic report')
+        self.copy.set_size_request(-1, 64)
+        self.copy.connect('clicked', self.copy_report); content.append(self.copy)
         self.window.present()
         self.check()
 
@@ -109,7 +125,8 @@ class SetupApp(Gtk.Application):
         if self.busy and text and '\n' not in text:
             self.determinate = False
             self.progress.set_fraction(0)
-            self.progress.set_text(text)
+            self.progress.set_text('Working…')
+            self.status.set_text(text)
             self.progress_detail.set_text('')
         buffer = self.text.get_buffer()
         buffer.insert(buffer.get_end_iter(), text + '\n')
@@ -159,6 +176,8 @@ class SetupApp(Gtk.Application):
 
     def confirm_remove(self, *_):
         dialog = Gtk.Dialog(title='Remove Android?', transient_for=self.window, modal=True)
+        dialog.add_css_class('waydroid-setup')
+        dialog.set_default_size(640, 360)
         dialog.add_button('Cancel', Gtk.ResponseType.CANCEL)
         dialog.set_default_response(Gtk.ResponseType.CANCEL)
         remove_button = dialog.add_button('Remove Android', Gtk.ResponseType.ACCEPT)
