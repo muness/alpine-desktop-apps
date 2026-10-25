@@ -24,11 +24,129 @@ and does not use the glibc runtime. Follow the recovery steps before rebooting.
 | Android system | VANILLA ARM64, Lineage 20 / Android 13, 20260927 |
 | Android vendor | MAINLINE ARM64, 20261022 |
 
-The fragment adds Binder/binderfs, ARM32 and legacy time-syscall compatibility,
-POSIX message queues, loop/overlay/bridge/veth, policy routing and netfilter
-support. The recipe checks resolved Kconfig values, including built-in versus
-module requirements. Kernel and modules are separate APKs with an exact version
-dependency. A unique kernel release keeps original and candidate modules apart.
+## Changes from the stock setup
+
+These are the settings and setup changes used in the working installation.
+We tested the set together; we did not remove each option in isolation to
+establish a minimal configuration. The exact kernel fragment is
+[`waydroid.config`](waydroid.config). `y` means built in; `m` means a module.
+
+### Kernel configuration
+
+| Group | Why it is included | Uses beyond Waydroid |
+| --- | --- | --- |
+| Binder and binderfs | Android interprocess communication and Binder devices | Android workloads |
+| Loop and overlay | Mount Android images and layer writable files over them | Disk images and containers |
+| Bridge, veth and nftables inet | Connect the container to the host network and apply Waydroid's packaged firewall rules | Container networking and firewalls |
+| ARM32 compatibility and legacy time syscalls | The official ARM64 image also runs 32-bit vendor services; without the time compatibility option, ARM32 zygote hit `ENOSYS` | Other 32-bit ARM programs |
+| POSIX message queues | Included in the container configuration | Programs using POSIX IPC |
+| IPv4/IPv6 policy routing | Android assigns traffic to per-network routing tables; without it, Android could not install its routes | Advanced routing and VPN configurations |
+| Legacy xtables, matches and targets | Android netd configures filtering, NAT, packet marks and accounting inside its network namespace | Linux firewalls and container networking |
+
+The complete explicit configuration follows. Kconfig also selects dependencies.
+
+```text
+# Android IPC and container storage/networking for Waydroid.
+# Binder is built-in-only in this kernel; auxiliary drivers load on demand.
+CONFIG_ANDROID_BINDER_IPC=y
+CONFIG_ANDROID_BINDERFS=y
+CONFIG_BLK_DEV_LOOP=m
+CONFIG_OVERLAY_FS=m
+CONFIG_BRIDGE=m
+CONFIG_VETH=m
+# Alpine's Waydroid package uses nftables inet-family chains.
+CONFIG_NF_TABLES_INET=y
+# Official arm64 Android images also run 32-bit vendor services.
+CONFIG_COMPAT=y
+CONFIG_COMPAT_32BIT_TIME=y
+CONFIG_POSIX_MQUEUE=y
+
+# Android routes app traffic through per-network policy routing tables.
+CONFIG_IP_ADVANCED_ROUTER=y
+CONFIG_IP_MULTIPLE_TABLES=y
+CONFIG_IPV6_MULTIPLE_TABLES=y
+
+# Android netd uses legacy xtables inside its network namespace.
+CONFIG_NETFILTER_XTABLES=m
+CONFIG_NETFILTER_XTABLES_LEGACY=y
+CONFIG_IP_NF_IPTABLES_LEGACY=m
+CONFIG_IP6_NF_IPTABLES_LEGACY=m
+CONFIG_NETFILTER_XT_MATCH_COMMENT=m
+CONFIG_NETFILTER_XT_MATCH_CONNTRACK=m
+CONFIG_NETFILTER_XT_MATCH_OWNER=m
+CONFIG_NETFILTER_XT_MATCH_QUOTA=m
+CONFIG_NETFILTER_XT_MATCH_BPF=m
+CONFIG_NETFILTER_XT_MATCH_CGROUP=m
+CONFIG_NETFILTER_XT_TARGET_MARK=m
+CONFIG_NETFILTER_XT_TARGET_CONNMARK=m
+CONFIG_NETFILTER_XT_TARGET_NFLOG=m
+CONFIG_NETFILTER_XT_TARGET_TCPMSS=m
+CONFIG_IP_NF_IPTABLES=m
+CONFIG_IP_NF_FILTER=m
+CONFIG_IP_NF_TARGET_REJECT=m
+CONFIG_IP_NF_NAT=m
+CONFIG_IP_NF_TARGET_MASQUERADE=m
+CONFIG_IP_NF_MANGLE=m
+CONFIG_IP_NF_RAW=m
+CONFIG_IP6_NF_IPTABLES=m
+CONFIG_IP6_NF_FILTER=m
+CONFIG_IP6_NF_TARGET_REJECT=m
+CONFIG_IP6_NF_MANGLE=m
+CONFIG_IP6_NF_NAT=m
+CONFIG_IP6_NF_TARGET_MASQUERADE=m
+CONFIG_IP6_NF_RAW=m
+```
+
+### Kernel packaging and installation
+
+- Add the fragment to the APKBUILD sources and SHA512 checksums, apply it before
+  `olddefconfig`, and check that every requested `y`/`m` value survives Kconfig.
+  Include the fragment in the configuration regression tests.
+- Bump the local package release from `r67` to `r71`. Keep upstream's split
+  kernel/modules packages and exact version dependency.
+- Set `CONFIG_LOCALVERSION="-waydroid4"` and disable
+  `CONFIG_LOCALVERSION_AUTO`. The separate module directory lets the original
+  kernel's modules coexist during recovery.
+- Adjust the installer to accept variable whitespace in `dc1-slotctl` output.
+- Allow the inactive slot to contain an Android boot image without a dtbswap
+  payload. Back it up without requiring that format; still require the running
+  Linux image to match exactly one slot and validate the candidate before writing.
+
+See [`kernel.patch`](kernel.patch), [`installer.patch`](installer.patch) and
+[`prepare-kernel.sh`](prepare-kernel.sh). These changes retain the pinned kernel
+source and upstream driver patches; they add no Waydroid-specific driver code.
+
+### Android and host setup
+
+- Install native Alpine `waydroid`, `waydroid-systemd`, `waydroid-nftrules` and
+  `unzip`, then the pinned VANILLA system and MAINLINE vendor images below.
+- Set `dalvik.vm.extra-opts=-Xint` and `dalvik.vm.usejit=false`. Both are needed
+  for the working interpreter configuration; the default runtime crashes.
+- Make `waydroid.cfg` readable by the desktop user (`0644`) and regenerate the
+  runtime configuration with `waydroid upgrade -o`.
+- Enable the packaged Waydroid nftables include and load the legacy IPv4/IPv6
+  filter, NAT, mangle and raw-table modules. Preserve existing firewall rules.
+- Enable the container service after testing. Keep Android's user session on
+  demand with the autostart override.
+- Restart the Android session after fixing config permissions; that restored
+  Brydge typing. Optionally set `show_ime_with_hard_keyboard=0` to hide Android's
+  screen keyboard.
+- Optionally install Aurora Store and F-Droid as Android APKs. These provide app
+  stores, not Google Play services; GApps remains a separate change.
+
+### Recovery added for this experiment
+
+- Save the original module tree and retain the installer's boot-slot and APK
+  backups. Restore original modules alongside the candidate before rebooting.
+- Pause automatic updates during the test, block automatic kernel confirmation,
+  and arm a ten-minute reboot timer. Keep the original Linux slot bootable.
+- After testing, save the recovery transaction, confirm the candidate, disable
+  the timer, and remove the update pause created by this experiment. Retain
+  the APK world constraint that pins the custom kernel.
+- Install `dc1-waydroid-rollback` to verify the saved original image/packages,
+  select the original slot and restore its packages after reboot.
+
+The sections below give the order and commands for applying these changes.
 
 ## Build the kernel
 
