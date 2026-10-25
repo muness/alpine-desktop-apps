@@ -35,8 +35,9 @@ a temporary `/home` mount before binding the user's home. The package strips
 setuid/setgid bits from runtime executables; those helpers are not used by
 the launcher.
 
-The recipe records the manual setup rather than claiming a tested general
-solution. Local build checks are recorded below.
+The recipe started from the manual setup. The later APK test below verifies
+the packaged paths on the same tablet; it does not establish compatibility
+elsewhere.
 
 ## Local build checks, 2026-10-25
 
@@ -51,12 +52,11 @@ On a native aarch64 Linux host with rootless Podman:
 - Shell syntax, ShellCheck, desktop-entry validation and local Markdown links
   passed. GitHub source checks also passed.
 
-These are build checks. The generated APK has not been installed or launched
-on the DC-1; the application observations above came from the manual trial.
+These initial build checks preceded the APK installation test below.
 
 ## Still open
 
-- Install, upgrade and removal of this APK on the tablet.
+- Upgrade between different APK releases on the tablet.
 - Completed sign-in and normal app use over time.
 - 1Password browser integration and biometric/system authentication.
 - A second user ID, another desktop, X11, or another device/distribution.
@@ -74,9 +74,45 @@ runtime and `20261025-r1` APK built locally; package postchecks and signature
 verification passed. The APK is about 1.3 GB compressed and 3.4 GB unpacked.
 ShellCheck, shell syntax and desktop-entry validation passed for the launchers.
 
-The Neo tablet test is pending: Wi-Fi transfers stalled at a few KB/s, then
-SSH became unreachable. USB power was detected on the tablet, but no USB data
-device appeared on the build host. No Neo files have been installed into the
-tablet's runtime yet. The existing 1Password and ChatGPT installations were
-left intact. Agent pairing, browsing, Google sign-in, extensions and Neo's
-renderer sandbox have not been verified on this tablet.
+## APK installation and application test, 2026-10-25
+
+The `20261025-r1` APK contains all three apps. It was transferred to the same
+DC-1, checked against the build-host SHA-256, verified with the build's public
+key, and installed with `apk add`. The previous manual launchers and desktop
+entries were moved to `/var/lib/alpine-desktop-apps/manual-backup`; the old
+runtime was retained for rollback. App data in the user's home was retained.
+
+Package lifecycle checks passed:
+
+- APK reported ownership of all three `/usr/bin` launchers and Neo's desktop entry.
+- `apk del` removed the launchers, Neo's desktop entry and the packaged runtime.
+- The old manual runtime and the user's configuration directory remained.
+- Reinstalling the same signed APK succeeded.
+
+After reinstall, each app was launched through its `/usr/bin` launcher in the
+GNOME Wayland session. All three user services stayed active, and their mount
+information included `/usr/lib/desktop-apps-runtime`, confirming use of the
+packaged runtime. The owner confirmed all three worked, including Neo opening
+its window and loading the requested web page.
+
+At one process snapshot, 1Password had one renderer, ChatGPT had three, and
+Neo had seven. Each identified renderer showed seccomp mode 2 and four PID
+namespace levels. Renderer counts change during use; these checks are not a
+security audit. The launcher shares the user's home and desktop services.
+
+Completed authentication, vault operations, Codex tasks, Neo agent pairing,
+extensions and updates remain unverified. The test did not upgrade between
+different APK releases or exercise the documented return to the old manual
+installation. No other device or desktop was tested.
+
+### USB transfer finding
+
+Wi-Fi became too slow for the package transfer. USB supplied power but Linux's
+UDC stayed at `not attached`. A timed, reversible PHY session override restored
+CDC-ECM enumeration and authenticated SSH over USB, which carried the APK.
+This was a diagnostic register test, not a flashed kernel or a recipe dependency.
+The temporary override was restored after testing.
+
+Evidence: [DC-1 issue #13](https://github.com/denysvitali/dc-1-pmos/issues/13).
+The [draft kernel fix](https://github.com/denysvitali/dc-1-linux-kernel/pull/5)
+compiled, but a patched-kernel boot and cable/role-transition tests remain pending.
