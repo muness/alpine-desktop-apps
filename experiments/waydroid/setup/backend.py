@@ -13,6 +13,7 @@ import pwd
 import shutil
 import subprocess
 import sys
+import time
 import urllib.request
 import zipfile
 
@@ -90,15 +91,17 @@ def download(pin, directory):
         request = urllib.request.Request(pin['url'], headers={'User-Agent': 'dc1-waydroid-setup/1'})
         with urllib.request.urlopen(request, timeout=60) as src, partial.open('wb') as dst:
             received = 0
-            next_notice = 0
+            last_notice = None
             while chunk := src.read(1024 * 1024):
                 received += len(chunk)
                 if received > pin['size']:
                     raise SetupError('Download exceeds its pinned size: ' + pin['filename'])
                 dst.write(chunk)
-                if received >= next_notice:
-                    emit(f"Downloading {pin['romtype']}: {received * 100 // pin['size']}%")
-                    next_notice = received + 32 * 1024 * 1024
+                now = time.monotonic()
+                if last_notice is None or now - last_notice >= 2 or received == pin['size']:
+                    emit(f"Downloading {pin['romtype']}: {received * 100 // pin['size']}% "
+                         f"({received / 1024**2:.1f} / {pin['size'] / 1024**2:.1f} MiB)")
+                    last_notice = now
         if partial.stat().st_size != pin['size'] or sha(partial) != pin['id']:
             raise SetupError('Download checksum failed: ' + pin['filename'] + '. Retry to download it again.')
         partial.replace(target)
