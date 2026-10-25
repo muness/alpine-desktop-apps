@@ -54,7 +54,7 @@ class AriaResumeTest(unittest.TestCase):
     self.end_headers()
     try:
      for offset in range(start,end+1,65536):
-      self.wfile.write(payload[offset:min(offset+65536,end+1)]);self.wfile.flush();time.sleep(.01)
+      self.wfile.write(payload[offset:min(offset+65536,end+1)]);self.wfile.flush();time.sleep(.05)
     except (BrokenPipeError,ConnectionResetError): pass
   server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
   threading.Thread(target=server.serve_forever,daemon=True).start()
