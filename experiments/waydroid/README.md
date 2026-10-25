@@ -447,8 +447,6 @@ so Bluetooth disconnection may not automatically bring the screen keyboard back.
 - Default ART and JIT-off alone crashed `system_server`. Keep both interpreter
   flags. [Waydroid issue #2040](https://github.com/waydroid/waydroid/issues/2040)
   reports a related ARM64 Alpine crash; the cause is unresolved.
-- The first kernel4 boot fell back without recording a Linux journal.
-  Subsequent boots succeeded; we do not know why the first failed.
 - Physical touch/gestures, audio, camera, suspend, DRM, banking apps,
   Play Integrity and long-term stability remain untested.
 - Android image updates are manual.
