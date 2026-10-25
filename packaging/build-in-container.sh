@@ -6,7 +6,7 @@ apk update
 adduser -D builder
 addgroup builder abuild
 recipe=${1:-desktop-apps}
-case "$recipe" in desktop-apps|tailscale-qs) ;; *) echo 'Unknown recipe' >&2; exit 2 ;; esac
+case "$recipe" in desktop-apps|tailscale-qs|obsidian) ;; *) echo 'Unknown recipe' >&2; exit 2 ;; esac
 work=/home/builder/work/$recipe
 mkdir -p "$work" /home/builder/.abuild /out/apk /out/keys /out/private
 chmod 700 /out/private
@@ -17,7 +17,7 @@ case "$recipe" in
   # This is a local generated input, never an unchecked remote source.
   ln -s /out/runtime.tar.zst "$work/runtime.tar.zst"
   ;;
- tailscale-qs) cp /recipe/tailscale-qs/APKBUILD "$work/" ;;
+ tailscale-qs|obsidian) cp /recipe/"$recipe"/* "$work/" ;;
 esac
 chown -R builder:builder /home/builder
 if [ -f /out/private/packager.rsa ]; then
@@ -42,7 +42,14 @@ cp /home/builder/.abuild/packager.rsa.pub /etc/apk/keys/
 if [ "$recipe" = desktop-apps ]; then
  su builder -c "cd '$work' && abuild checksum"
 fi
-su builder -c "cd '$work' && abuild -r"
+if [ "$recipe" = obsidian ]; then
+ # This recipe only unpacks vendor binaries. All its build tools are already
+ # installed above; its runtime-only dependency is a locally generated APK,
+ # absent from Alpine's repositories. Keep that dependency in the output APK.
+ su builder -c "cd '$work' && abuild -d"
+else
+ su builder -c "cd '$work' && abuild -r"
+fi
 find /home/builder/packages -name '*.apk' -exec cp '{}' /out/apk/ ';'
 for package in /out/apk/*.apk; do
  apk --repositories-file /dev/null --keys-dir /out/keys verify "$package"

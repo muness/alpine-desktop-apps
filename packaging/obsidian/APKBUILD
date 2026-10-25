@@ -1,0 +1,32 @@
+# Maintainer: Muness Castle <931+muness@users.noreply.github.com>
+pkgname=obsidian-glibc-experimental
+pkgver=1.14.5
+pkgrel=0
+pkgdesc="Obsidian ARM64 addon for the experimental desktop runtime"
+url="https://obsidian.md"
+arch="aarch64"
+license="custom"
+depends="glibc-desktop-apps-experimental>=20261025-r1"
+options="!check !strip !tracedeps"
+source="obsidian-$pkgver-arm64.tar.gz::https://github.com/obsidianmd/obsidian-releases/releases/download/v$pkgver/obsidian-$pkgver-arm64.tar.gz
+	obsidian
+	obsidian.desktop"
+builddir="$srcdir/obsidian-$pkgver-arm64"
+
+package() {
+	local app="$pkgdir/usr/lib/desktop-apps-runtime/opt/obsidian"
+	mkdir -p "$app"
+	cp -a "$builddir"/. "$app/"
+	chown -R root:root "$app"
+	find "$app" -type f \( -perm -4000 -o -perm -2000 \) -exec chmod a-s \{\} \;
+	test -x "$app/obsidian"
+	test -f "$app/resources/icon.png"
+	install -Dm755 "$srcdir/obsidian" "$pkgdir/usr/bin/obsidian"
+	install -Dm644 "$srcdir/obsidian.desktop" "$pkgdir/usr/share/applications/obsidian.desktop"
+}
+
+sha512sums="
+2ea90c04e97eeb1f81a36fea9ecf985caacb4fe8a0897f440a24308e70f87adb6d12c7063298fb32897256542f6dbb3ae67809b3d1bff3bb143f19ddf8015d36  obsidian-1.14.5-arm64.tar.gz
+39b0113dc1174334ebd5b59176af175f208078164bfc990c0d84530eca78f4ef9b0ba6f8bc0f639b3b2348e85226f29e77a0919b950822c288ff10199f7da180  obsidian
+0177ee17403b782e7e2abcdb550d64c3dac4fbfadbd7aa8b58b1b82cdef7bfebea9c4cf73cdde30743670bb03429f7f80015c3532090ccfb7039458f67383c3d  obsidian.desktop
+"

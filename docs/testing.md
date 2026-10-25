@@ -137,3 +137,11 @@ A further DNS-on retest also passed public lookups, repeated downloads,
 MagicDNS resolution and all 15 large-packet pings; the owner confirmed normal
 browsing. Tailscale DNS is now enabled. The [instructions](tailscale.md) record
 both tests and retain the earlier failure as unresolved.
+
+## Obsidian add-on
+
+The separate `obsidian-glibc-experimental-1.14.5-r0` APK passed installation,
+removal and reinstall on the DC-1. Removal preserved the shared runtime and
+its other app executables. The packaged Obsidian launcher opened a dedicated
+test vault and successfully saved a note append. See [exact checks and
+limitations](obsidian.md), including the renderer and EGL observations.

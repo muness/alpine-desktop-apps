@@ -1,0 +1,4 @@
+#!/bin/sh
+# Use the installed runtime without replacing its other apps or launcher.
+exec /usr/bin/desktop-apps-runtime shell -c \
+ 'exec /opt/obsidian/obsidian --ozone-platform=wayland --disable-setuid-sandbox "$@"' obsidian "$@"

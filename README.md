@@ -12,6 +12,11 @@ Neo loaded a web page. Completed sign-in, browser integration and long-term
 use were not independently verified. No compatibility is claimed for other
 machines, distributions or desktop sessions. See [what was tested](docs/testing.md).
 
+[Obsidian](docs/obsidian.md) is available as a separate add-on APK using that
+same runtime. Build it with `./scripts/build-obsidian-apk.sh`; the base runtime
+must already be installed. Its install, removal, reinstall and note-saving
+checks passed on the DC-1.
+
 There is also a separate, native [Tailscale Quick Settings applet](docs/tailscale.md).
 Alpine supplies the daemon; this repository packages the GNOME extension.
 Build it with `./scripts/build-tailscale-qs-apk.sh`. It does not need the large

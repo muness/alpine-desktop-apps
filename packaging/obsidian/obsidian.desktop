@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Obsidian
+Comment=Markdown notes (experimental glibc runtime)
+Exec=/usr/bin/obsidian %U
+Icon=/usr/lib/desktop-apps-runtime/opt/obsidian/resources/icon.png
+Terminal=false
+Type=Application
+Categories=Office;
+StartupWMClass=obsidian
+MimeType=x-scheme-handler/obsidian;
