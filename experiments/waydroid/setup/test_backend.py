@@ -143,5 +143,3 @@ class BackendTests(unittest.TestCase):
             self.assertEqual([c.args[0] for c in delete.call_args_list],[Path('/var/lib/waydroid'),root/'home/.local/share/waydroid',root/'cache'])
 
 if __name__=='__main__':unittest.main()
-
-
