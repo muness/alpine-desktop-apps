@@ -43,8 +43,13 @@ configured Alpine repositories; this project does not rebuild either package.
 Still as root, replace `YOUR_DESKTOP_USER` with the desktop login name:
 
 ```sh
-tailscale up --operator=YOUR_DESKTOP_USER
+tailscale up --accept-dns=false --operator=YOUR_DESKTOP_USER
 ```
+
+`--accept-dns=false` keeps the network's DNS configuration. This is the
+configuration that passed the follow-up test below; system-wide MagicDNS
+resolution is not enabled by these instructions. Tailscale IP connectivity and
+the applet's peer list still work.
 
 Open the printed authentication link in your browser and complete sign-in and
 device approval. Do not substitute the root account for your desktop username.
@@ -127,3 +132,22 @@ separate from deleting a device in your tailnet's admin console.
 The CLI/API control round trip was automated; a physical tap on the applet's
 tile was not independently observed. Exit-node selection, account switching,
 suspend/resume and long-term use remain untested.
+
+### Follow-up: slowdown and retry
+
+Later, the owner reported nearly unusable browsing and an unresponsive applet
+toggle. SSH stalled too. Large LAN ping packets were lost while smaller ones
+passed; Tailscale already reported disconnected, with no exit node or accepted
+subnet routes. The daemon and applet were stopped, and a reboot restored normal
+browsing and full-size packets. This does not establish Tailscale as the cause.
+
+A staged retry then enabled Tailscale with `--accept-dns=false`, followed by the
+applet. The daemon was online with no health warnings. Page loads took about
+0.1 seconds; repeated 1 MB downloads ran at roughly 4–5 MB/s; all 12 large LAN
+ping packets arrived, and a VPN peer ping succeeded. Asked about browsing and
+the applet toggle, the owner reported “seems great.”
+
+The daemon and applet were left enabled, with Tailscale DNS disabled. This is
+a successful short retest, not proof that DNS caused the earlier failure or
+that it cannot recur. The earlier temporary host packet-size adjustment was
+removed; the tablet's Wi-Fi MTU remained 1500.

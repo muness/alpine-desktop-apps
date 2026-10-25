@@ -127,3 +127,10 @@ the VPN as the desktop user. See [setup and exact checks](tailscale.md).
 After the desktop-apps trial, the owner requested BrowserOS neo as the default
 browser and removal of Firefox. Those changes were applied on the tablet.
 The earlier Firefox observations above describe the original trial.
+
+Tailscale follow-up: the owner later reported severe browsing slowdown and an
+unresponsive toggle. A reboot restored normal traffic. A subsequent staged
+retry with Tailscale DNS disabled and the applet enabled passed page loads,
+repeated downloads, large-packet LAN pings and a VPN peer ping; the owner
+reported it seemed great. The cause of the earlier failure remains unproven.
+The [Tailscale instructions](tailscale.md) now use that tested configuration.
