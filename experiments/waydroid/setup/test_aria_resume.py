@@ -1,6 +1,6 @@
 import http.server,threading,tempfile,subprocess,time,signal,hashlib
 from pathlib import Path
-import unittest,shutil
+import unittest,shutil,textwrap
 
 class AriaResumeTest(unittest.TestCase):
  @unittest.skipUnless(shutil.which("aria2c"), "aria2c is not installed")
@@ -68,7 +68,7 @@ class AriaResumeTest(unittest.TestCase):
   except b.SetupError as error: print(error,flush=True);sys.exit(1)
   """
   with tempfile.TemporaryDirectory() as d:
-   code = code.replace('/usr/local/lib/dc1-waydroid-setup/backend.py', str(Path(__file__).with_name('backend.py').resolve()))
+   code = textwrap.dedent(code).replace('/usr/local/lib/dc1-waydroid-setup/backend.py', str(Path(__file__).with_name('backend.py').resolve()))
    command=['python3','-u','-c',code,d,f'http://127.0.0.1:{server.server_port}/image',hashlib.sha256(payload).hexdigest(),str(len(payload))]
    p=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True)
    for line in p.stdout:
