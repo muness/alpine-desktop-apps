@@ -8,8 +8,9 @@ export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
 case ${1:-} in
  1password) app=/opt/1Password/1password ;;
  chatgpt) app=/usr/lib/chatgpt/ChatGPT ;;
+ browseros-neo) app=/usr/bin/browserclaw ;;
  shell) app=/bin/sh ;;
- *) echo 'Usage: desktop-apps-runtime {1password|chatgpt|shell} [arguments]' >&2; exit 2 ;;
+ *) echo 'Usage: desktop-apps-runtime {1password|chatgpt|browseros-neo|shell} [arguments]' >&2; exit 2 ;;
 esac
 shift
 set -- "$app" "$@"

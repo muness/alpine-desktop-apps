@@ -61,3 +61,22 @@ on the DC-1; the application observations above came from the manual trial.
 - 1Password browser integration and biometric/system authentication.
 - A second user ID, another desktop, X11, or another device/distribution.
 - Future vendor releases and a maintained update feed.
+
+## BrowserOS neo recipe, 2026-10-25
+
+The official ARM64 `.deb` for Neo **0.51.2.3** reports Debian package version
+**155.0.8314.26**. Its SHA-256 matched both the existing host recipe and the
+GitHub release asset digest. No Neo package was found in the DC-1's configured
+APK repositories.
+
+The Debian runtime installed Neo without additional dependencies. The updated
+runtime and `20261025-r1` APK built locally; package postchecks and signature
+verification passed. The APK is about 1.3 GB compressed and 3.4 GB unpacked.
+ShellCheck, shell syntax and desktop-entry validation passed for the launchers.
+
+The Neo tablet test is pending: Wi-Fi transfers stalled at a few KB/s, then
+SSH became unreachable. USB power was detected on the tablet, but no USB data
+device appeared on the build host. No Neo files have been installed into the
+tablet's runtime yet. The existing 1Password and ChatGPT installations were
+left intact. Agent pairing, browsing, Google sign-in, extensions and Neo's
+renderer sandbox have not been verified on this tablet.

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Name=BrowserOS neo
+Comment=BrowserOS neo in the experimental glibc runtime
+Exec=/usr/bin/browseros-neo %U
+Icon=/usr/lib/desktop-apps-runtime/usr/share/icons/hicolor/256x256/apps/browserclaw.png
+Terminal=false
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+StartupWMClass=chromium-browser

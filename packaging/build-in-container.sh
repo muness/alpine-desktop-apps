@@ -8,7 +8,7 @@ addgroup builder abuild
 mkdir -p /home/builder/work/desktop-apps /home/builder/.abuild /out/apk /out/keys /out/private
 chmod 700 /out/private
 cp /recipe/APKBUILD /recipe/desktop-apps-runtime /recipe/1password /recipe/chatgpt \
- /recipe/onepassword.desktop /recipe/chatgpt.desktop /home/builder/work/desktop-apps/
+ /recipe/browseros-neo /recipe/browseros-neo.desktop /recipe/onepassword.desktop /recipe/chatgpt.desktop /home/builder/work/desktop-apps/
 # This is a local generated input, never an unchecked remote source.
 ln -s /out/runtime.tar.zst /home/builder/work/desktop-apps/runtime.tar.zst
 chown -R builder:builder /home/builder

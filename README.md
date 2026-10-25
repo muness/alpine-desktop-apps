@@ -1,13 +1,15 @@
 # Alpine desktop app experiment
 
-Recipes and launchers from one attempt to run the **1Password desktop app**
-and **ChatGPT desktop app with Codex** on a Daylight DC-1 running Nura edge.
+Recipes and launchers from one attempt to run the **1Password desktop app**,
+**ChatGPT desktop app with Codex**, and **BrowserOS neo** on a
+Daylight DC-1 running Nura edge.
 They use official ARM64 binaries inside a Debian/glibc filesystem, launched
 with bubblewrap. The host stays on musl.
 
-Both app windows opened on that tablet and allowed starting sign-in. That is
-the extent of the application test; this is not a claim that the setup works
-on other machines, distributions or desktop sessions. The APK packaging is
+The 1Password and ChatGPT windows opened on that tablet and allowed
+starting sign-in. Neo has passed local build checks; its tablet launch test
+is pending. This is not a claim that the setup works on other machines,
+distributions or desktop sessions. The APK packaging is
 an experiment too. See [what was tested](docs/testing.md).
 
 There is no hosted APK repository or binary release here. Build locally if
@@ -37,7 +39,7 @@ Alpine container and verifies its signature.
 
 Output:
 
-- `out/apk/`: the APK, containing the runtime and both apps.
+- `out/apk/`: the APK, containing the runtime and all three apps.
 - `out/keys/packager.rsa.pub`: the public signing key for your build.
 - `out/private/packager.rsa`: your private signing key. Keep it private;
   subsequent builds reuse it. The whole `out/` directory is ignored by Git.
@@ -53,15 +55,16 @@ its public key to the target. As root on that target, using the correct paths:
 
 ```sh
 install -m644 out/keys/packager.rsa.pub /etc/apk/keys/
-apk add out/apk/glibc-desktop-apps-experimental-20261025-r0.apk
+apk add out/apk/glibc-desktop-apps-experimental-20261025-r1.apk
 ```
 
-This installs launchers named **1Password** and **ChatGPT**. They can also be
-started from a terminal:
+This installs launchers named **1Password**, **ChatGPT**, and **BrowserOS neo**.
+They can also be started from a terminal:
 
 ```sh
 1password
 chatgpt
+browseros-neo
 # Alias for the same ChatGPT app, which includes Codex:
 codex-desktop
 ```
@@ -69,7 +72,7 @@ codex-desktop
 The launcher currently assumes a Wayland session and supplies GNOME desktop
 settings. It shares the user's home directory and session services with the
 apps. It is a compatibility environment, **not a privacy boundary**.
-Runtime executables have their setuid/setgid bits removed. Electron's
+Runtime executables have their setuid/setgid bits removed. Chromium/Electron's
 setuid sandbox helper is skipped; the user-namespace sandbox stays
 enabled. The launcher does not pass `--no-sandbox`.
 
@@ -89,12 +92,15 @@ installation. An old `/usr/local/bin` launcher may take precedence.
 
 ## Updates and removal
 
-The initial pins are 1Password **8.12.42** and ChatGPT **26.1016.61520**.
+The initial pins are 1Password **8.12.42**, ChatGPT **26.1016.61520**, and
+BrowserOS neo **0.51.2.3** (vendor Debian package version **155.0.8314.26**).
 To update, review and change the vendor URLs/checksums, rebuild the runtime,
-bump the APK version or release, close both apps, then build and install the new APK with
+bump the APK version or release, close the apps, then build and install the new APK with
 `apk add`. For Debian-library updates, rebuild the runtime and bump the APK
 release too. `apk upgrade` cannot discover new builds unless you separately
-publish and configure an APK repository. No update service is installed.
+publish and configure an APK repository.
+The runtime is read-only, so vendor self-updaters cannot replace its files.
+Use rebuilt packages for app updates.
 
 As root:
 
@@ -114,9 +120,12 @@ install Firefox or fix the Chromium cookie error encountered in the trial.
 ## Source and licenses
 
 1Password comes from `downloads.1password.com`; ChatGPT comes from OpenAI's
-`persistent.oaistatic.com` Debian feed. The build checks their SHA-256 hashes.
+`persistent.oaistatic.com` Debian feed. BrowserOS neo comes from the official
+[browserclaw release](https://github.com/browseros-ai/BrowserOS/releases/tag/browserclaw/v0.51.2.3).
+The build checks all three SHA-256 hashes; the Neo hash also matches the
+GitHub release asset digest.
 See [the build script](scripts/build-runtime.sh) for exact URLs and pins.
 
-The scripts and documentation here are MIT-licensed. The proprietary apps
+The scripts and documentation here are MIT-licensed. The vendor apps
 and Debian components retain their own licenses, including the notices in
 the generated filesystem. This repository does not publish their binaries.

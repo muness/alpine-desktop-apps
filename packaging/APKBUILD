@@ -2,22 +2,22 @@
 # Generated runtime payload; build through scripts/build-apk.sh.
 pkgname=glibc-desktop-apps-experimental
 pkgver=20261025
-pkgrel=0
-pkgdesc="Experimental 1Password and ChatGPT desktop runtime from a DC-1 trial"
+pkgrel=1
+pkgdesc="Experimental 1Password, ChatGPT and BrowserOS neo runtime"
 url="https://github.com/muness/alpine-desktop-apps"
 arch="aarch64"
 license="custom"
 depends="bubblewrap desktop-file-utils"
 makedepends="zstd tar"
 options="!check !strip !tracedeps"
-source="runtime.tar.zst desktop-apps-runtime 1password chatgpt onepassword.desktop chatgpt.desktop"
+source="runtime.tar.zst desktop-apps-runtime 1password chatgpt browseros-neo onepassword.desktop chatgpt.desktop browseros-neo.desktop"
 # The build wrapper computes checksums in its disposable recipe copy.
 sha512sums=""
 
 unpack() {
 	# Avoid an extra copy of the large rootfs under srcdir.
 	mkdir -p "$srcdir"
-	for file in desktop-apps-runtime 1password chatgpt onepassword.desktop chatgpt.desktop; do
+	for file in desktop-apps-runtime 1password chatgpt browseros-neo onepassword.desktop chatgpt.desktop browseros-neo.desktop; do
 		cp "$startdir/$file" "$srcdir/$file"
 	done
 }
@@ -35,10 +35,12 @@ package() {
 	find "$pkgdir/usr/lib/desktop-apps-runtime" -type f \( -perm -4000 -o -perm -2000 \) -exec chmod a-s \{\} \;
 	test -x "$pkgdir/usr/lib/desktop-apps-runtime/opt/1Password/1password"
 	test -x "$pkgdir/usr/lib/desktop-apps-runtime/usr/lib/chatgpt/ChatGPT"
-	for file in desktop-apps-runtime 1password chatgpt; do
+	test -x "$pkgdir/usr/lib/desktop-apps-runtime/usr/lib/browserclaw/browserclaw"
+	for file in desktop-apps-runtime 1password chatgpt browseros-neo; do
 		install -Dm755 "$srcdir/$file" "$pkgdir/usr/bin/$file"
 	done
 	ln -s chatgpt "$pkgdir/usr/bin/codex-desktop"
 	install -Dm644 "$srcdir/onepassword.desktop" "$pkgdir/usr/share/applications/com.onepassword.OnePassword.desktop"
+	install -Dm644 "$srcdir/browseros-neo.desktop" "$pkgdir/usr/share/applications/browseros-neo.desktop"
 	install -Dm644 "$srcdir/chatgpt.desktop" "$pkgdir/usr/share/applications/chatgpt.desktop"
 }

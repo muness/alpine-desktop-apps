@@ -21,6 +21,9 @@ fetch 1password.tar.gz \
 fetch chatgpt.deb \
   https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.1016.61520_arm64.deb \
   c5498348581f7607102ac6f206c9f87668cce36c8c7dbb4c0209e25cd8a60b11
+fetch browseros-neo.deb \
+  https://github.com/browseros-ai/BrowserOS/releases/download/browserclaw/v0.51.2.3/BrowserOS_neo_v0.51.2.3_arm64.deb \
+  699cbbffec1a5dcb70a7647076d4c5731f5eb1f991c35f5c2319a24e5847a994
 context=$(mktemp -d "$output/.runtime-context.XXXXXX")
 container=
 cleanup() {
@@ -28,7 +31,7 @@ cleanup() {
   rm -rf -- "$context"
 }
 trap cleanup EXIT
-cp "$output/cache/1password.tar.gz" "$output/cache/chatgpt.deb" "$context/"
+cp "$output/cache/1password.tar.gz" "$output/cache/chatgpt.deb" "$output/cache/browseros-neo.deb" "$context/"
 cp "$project/packaging/portal-xdg-open" "$context/"
 image=localhost/alpine-desktop-apps-experiment:20261025
 podman build --no-cache --platform linux/arm64 --file "$project/Dockerfile" --tag "$image" "$context"
