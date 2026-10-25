@@ -1,0 +1,9 @@
+/out/
+*.apk
+*.deb
+*.tar.gz
+*.tar.zst
+*.rsa
+*.rsa.pub
+*.log
+__pycache__/

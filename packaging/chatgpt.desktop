@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=ChatGPT
+Comment=ChatGPT and Codex (experimental glibc runtime)
+Exec=/usr/bin/chatgpt %U
+Icon=/usr/lib/desktop-apps-runtime/usr/lib/chatgpt/resources/icon-chatgpt.png
+Type=Application
+Terminal=false
+Categories=Utility;
+StartupWMClass=ChatGPT
+MimeType=x-scheme-handler/codex;

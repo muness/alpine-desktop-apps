@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+runtime=/usr/lib/desktop-apps-runtime
+uid=$(id -u)
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$uid}"
+export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}"
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+case ${1:-} in
+ 1password) app=/opt/1Password/1password ;;
+ chatgpt) app=/usr/lib/chatgpt/ChatGPT ;;
+ shell) app=/bin/sh ;;
+ *) echo 'Usage: desktop-apps-runtime {1password|chatgpt|shell} [arguments]' >&2; exit 2 ;;
+esac
+shift
+set -- "$app" "$@"
+if [ "$app" != /bin/sh ]; then
+ set -- "$@" --ozone-platform=wayland --disable-setuid-sandbox
+fi
+exec /usr/bin/bwrap \
+ --unshare-user --uid "$uid" --gid "$(id -g)" --unshare-pid --die-with-parent \
+ --ro-bind "$runtime" / --tmpfs /run --dir /run/user --proc /proc --dev-bind /dev /dev --ro-bind /sys /sys \
+ --tmpfs /home --dir "$HOME" --bind "$HOME" "$HOME" --bind /tmp /tmp --bind "$XDG_RUNTIME_DIR" "$XDG_RUNTIME_DIR" \
+ --ro-bind /run/dbus /run/dbus --ro-bind /etc/resolv.conf /etc/resolv.conf \
+ --ro-bind /etc/machine-id /etc/machine-id \
+ --setenv HOME "$HOME" --setenv PATH /usr/local/bin:/usr/bin:/bin \
+ --setenv XDG_RUNTIME_DIR "$XDG_RUNTIME_DIR" --setenv WAYLAND_DISPLAY "$WAYLAND_DISPLAY" \
+ --setenv DBUS_SESSION_BUS_ADDRESS "$DBUS_SESSION_BUS_ADDRESS" \
+ --setenv XDG_SESSION_TYPE wayland --setenv XDG_CURRENT_DESKTOP GNOME \
+ --setenv PULSE_SERVER "unix:$XDG_RUNTIME_DIR/pulse/native" \
+ --unsetenv LD_PRELOAD -- "$@"
