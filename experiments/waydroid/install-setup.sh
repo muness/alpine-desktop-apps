@@ -15,15 +15,18 @@ fi
 exec /usr/bin/python3 /usr/local/lib/dc1-waydroid-setup/backend.py "$@"
 LAUNCH
 chmod 755 /usr/local/bin/dc1-waydroid-setup
+ln -sf dc1-waydroid-setup /usr/local/bin/dc1-waydroid-manager
+install -d -m755 /usr/local/share/icons/hicolor/scalable/apps
+install -m644 "$here/setup/waydroid-manager.svg" /usr/local/share/icons/hicolor/scalable/apps/io.github.muness.WaydroidManager.svg
 cat > /usr/local/share/applications/io.github.muness.WaydroidSetup.desktop <<'DESKTOP'
 [Desktop Entry]
 Type=Application
-Name=Waydroid Setup
-Comment=Set up Android and copy a diagnostic report
-Exec=/usr/local/bin/dc1-waydroid-setup
-Icon=application-x-executable
+Name=Waydroid Manager
+Comment=Install, open and remove Android; diagnose problems
+Exec=/usr/local/bin/dc1-waydroid-manager
+Icon=io.github.muness.WaydroidManager
 Terminal=false
 Categories=System;Settings;
 StartupNotify=true
 DESKTOP
-printf 'Installed Waydroid Setup. Open it from Applications as your desktop user.\n'
+printf 'Installed Waydroid Manager. Open it from Applications as your desktop user.\n'

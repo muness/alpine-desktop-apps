@@ -255,7 +255,7 @@ path as root. Do not use `waydroid.config`: it is only a fragment. Without a
 matching full config, setup stops and the report says the requirements are
 unreadable.
 
-Open **Waydroid Setup** from Applications. Choose an image, then **Set up
+Open **Waydroid Manager** from Applications. Choose an image, then **Set up
 Android**. The helper installs the Alpine packages, verifies the pinned image
 sizes and SHA256 hashes, applies the interpreter settings and enables the
 container. It needs 6 GiB free and downloads 1–1.5 GB. It never flashes a kernel
@@ -289,7 +289,7 @@ startup can still finish.
 
 ### Remove Android
 
-Choose **Remove Android…** in Waydroid Setup. By default, this stops the
+Choose **Remove Android…** in Waydroid Manager. By default, this stops the
 container and removes the Waydroid packages while keeping Android apps, data
 and images. Check **Also delete Android apps, data and downloaded images** for
 a clean start, including switching between Vanilla and GApps. Deletion cannot

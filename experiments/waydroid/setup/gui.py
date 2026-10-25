@@ -12,7 +12,7 @@ try:
     gi.require_version('Gtk', '4.0')
     from gi.repository import Gtk, Gio, GLib, Gdk, Pango
 except (ImportError, ValueError):
-    sys.exit('Install gtk4.0 and py3-gobject3, then launch Waydroid Setup again.')
+    sys.exit('Install gtk4.0 and py3-gobject3, then launch Waydroid Manager again.')
 
 HERE = Path(__file__).resolve().parent
 BACKEND = str(HERE/'backend.py')
@@ -29,7 +29,8 @@ class SetupApp(Gtk.Application):
     def activate(self, *_):
         if self.get_active_window():
             self.get_active_window().present(); return
-        self.window = Gtk.ApplicationWindow(application=self, title='Waydroid Setup')
+        self.window = Gtk.ApplicationWindow(application=self, title='Waydroid Manager')
+        self.window.set_icon_name('io.github.muness.WaydroidManager')
         self.window.set_default_size(1100, 850)
         self.window.maximize()
         self.window.add_css_class('waydroid-setup')
@@ -196,7 +197,7 @@ class SetupApp(Gtk.Application):
                     report_text = diagnostic.stdout
                     GLib.idle_add(self.append, '\n' + diagnostic.stdout)
             except (OSError, subprocess.TimeoutExpired):
-                message = 'Could not run the helper. Reinstall Waydroid Setup and retry.'
+                message = 'Could not run the helper. Reinstall Waydroid Manager and retry.'
             GLib.idle_add(self.finish, message, report_text, action, code)
         threading.Thread(target=work, daemon=True).start()
 
