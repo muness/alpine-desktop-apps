@@ -32,6 +32,6 @@ cp /home/builder/.abuild/packager.rsa.pub /etc/apk/keys/
 su builder -c 'cd /home/builder/work/desktop-apps && abuild checksum && abuild -r'
 find /home/builder/packages -name '*.apk' -exec cp '{}' /out/apk/ ';'
 for package in /out/apk/*.apk; do
- apk verify --keys-dir /out/keys "$package"
+ apk --repositories-file /dev/null --keys-dir /out/keys verify "$package"
 done
 printf '\nAPKs: /out/apk\nPublic key: /out/keys/packager.rsa.pub\nKeep /out/private private.\n'

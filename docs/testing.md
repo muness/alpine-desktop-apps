@@ -36,7 +36,23 @@ setuid/setgid bits from runtime executables; those helpers are not used by
 the launcher.
 
 The recipe records the manual setup rather than claiming a tested general
-solution. Local build checks are recorded below as they are completed.
+solution. Local build checks are recorded below.
+
+## Local build checks, 2026-10-25
+
+On a native aarch64 Linux host with rootless Podman:
+
+- Both pinned vendor download checksums passed, including a fresh download
+  from the versioned 1Password URL.
+- The runtime built from the repository Dockerfile.
+- Alpine 3.22 / abuild 3.15.0 produced the aarch64 APK, roughly 1.1 GB
+  compressed and 2.7 GB unpacked. Package postchecks passed.
+- The generated APK signature verified with the locally generated public key.
+- Shell syntax, ShellCheck, desktop-entry validation and local Markdown links
+  passed. GitHub source checks also passed.
+
+These are build checks. The generated APK has not been installed or launched
+on the DC-1; the application observations above came from the manual trial.
 
 ## Still open
 
