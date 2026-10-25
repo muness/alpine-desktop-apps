@@ -43,13 +43,13 @@ configured Alpine repositories; this project does not rebuild either package.
 Still as root, replace `YOUR_DESKTOP_USER` with the desktop login name:
 
 ```sh
-tailscale up --accept-dns=false --operator=YOUR_DESKTOP_USER
+tailscale up --accept-dns=true --operator=YOUR_DESKTOP_USER
 ```
 
-`--accept-dns=false` keeps the network's DNS configuration. This is the
-configuration that passed the follow-up test below; system-wide MagicDNS
-resolution is not enabled by these instructions. Tailscale IP connectivity and
-the applet's peer list still work.
+`--accept-dns=true` enables the tailnet's DNS configuration, including MagicDNS.
+Both DNS-on and DNS-off configurations passed the follow-up tests below.
+The current trial configuration has DNS enabled. Use `--accept-dns=false` if
+you instead want to retain the network's DNS configuration.
 
 Open the printed authentication link in your browser and complete sign-in and
 device approval. Do not substitute the root account for your desktop username.
@@ -151,3 +151,16 @@ The daemon and applet were left enabled, with Tailscale DNS disabled. This is
 a successful short retest, not proof that DNS caused the earlier failure or
 that it cannot recur. The earlier temporary host packet-size adjustment was
 removed; the tablet's Wi-Fi MTU remained 1500.
+
+### DNS-on retest
+
+At the owner's request, Tailscale DNS was then enabled again. Public lookups
+took about 0.05–0.1 seconds, pages loaded in about 0.2 seconds, and repeated
+1 MB downloads ran at roughly 4–5 MB/s. All 15 large LAN ping packets arrived.
+A tailnet hostname resolved through MagicDNS in about 0.01 seconds. The owner
+confirmed browsing still felt normal.
+
+Tailscale, the applet and Tailscale DNS were left enabled. The timed recovery
+stop was cancelled. DNS-on also passing means the earlier failure has not
+been reproduced or attributed to a cause; the initial slowdown should not be
+presented as a proven DNS or WireGuard bug.

@@ -133,4 +133,7 @@ unresponsive toggle. A reboot restored normal traffic. A subsequent staged
 retry with Tailscale DNS disabled and the applet enabled passed page loads,
 repeated downloads, large-packet LAN pings and a VPN peer ping; the owner
 reported it seemed great. The cause of the earlier failure remains unproven.
-The [Tailscale instructions](tailscale.md) now use that tested configuration.
+A further DNS-on retest also passed public lookups, repeated downloads,
+MagicDNS resolution and all 15 large-packet pings; the owner confirmed normal
+browsing. Tailscale DNS is now enabled. The [instructions](tailscale.md) record
+both tests and retain the earlier failure as unresolved.
