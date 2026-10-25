@@ -488,3 +488,14 @@ The underlying kernel retains GPL-2.0-only licensing. Upstream packaging and
 installer code retain Denys Vitali's MIT notice in
 [`LICENSE.upstream`](LICENSE.upstream). Local scripts and
 documentation follow this repository's MIT license.
+
+## Manager screenshots
+
+Captured on the DC-1. The install screen previews the pre-install state;
+Android was not removed for the capture.
+
+![Waydroid Manager with GApps selected](screenshots/install.png)
+
+After installation, Open Android becomes the primary action:
+
+![Waydroid Manager after installation](screenshots/installed.png)
