@@ -499,3 +499,7 @@ Android was not removed for the capture.
 After installation, Open Android becomes the primary action:
 
 ![Waydroid Manager after installation](screenshots/installed.png)
+
+**Stop Android** closes Android apps and stops the session without removing
+installed apps or data. Save work in Android apps first. Use **Open Android**
+to start it again; no administrator prompt is needed.
